@@ -61,16 +61,17 @@ SEXP nnrr(NumericVector y, NumericMatrix gen, double h2 = 0.5,
       if(B.isNotNull()){
         b1 = (sum(gen(_,j)*tilde))/(Lmb+xx(j))*(1-w)+A[j]*w;
         }else{
-        b1 = (sum(gen(_,j)*tilde))/(Lmb+xx(j));}; b[j] = b1;
+        b1 = (sum(gen(_,j)*tilde))/(Lmb+xx(j));}
+        b[j] = b1;
       // Update residuals
       e = tilde-gen(_,j)*b1;
-      // Alternative framework
-      if(h2==0){
-        // Variance components
-        ve = sum(e*y)/(n-1);
-        va = sum(b*b+(ve/(xx+Lmb)))/p;
-        Lmb = sqrt(cxx*ve/va);}
     }
+    // Alternative framework
+    if(h2==0){
+      // Variance components
+      ve = sum(e*y)/(n-1);
+      va = sum(b*b+(ve/(xx+Lmb)))/p;
+      Lmb = sqrt(cxx*ve/va);}
     // Intercept update
     eM = mean(e);
     mu = mu+eM;
