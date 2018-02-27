@@ -8,4 +8,4 @@ FCT = function(y,x){
 FCT_update = function(y,x,b){
   if(is.factor(x)){ m = tapply(y,x,mean); e = y-m[x]
   }else{ m = crossprod(y,x)/crossprod(x); e = y-x*m }
-  b=m+b; return(list(b=b,e=e))}
+  b=m+b; return(list(b=m,e=e))}
