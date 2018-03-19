@@ -35,7 +35,7 @@ SEXP emBB(NumericVector y, NumericMatrix gen, double df = 4, double R2 = 0.5, do
       e1 = e-gen(_,j)*(b1-b0);
       e2 = e-gen(_,j)*(0-b0);
       LR = Pi0*exp(C*(sum(e2*e2)-sum(e1*e1)));
-      d[j] = d[j] = (1/(1+LR));
+      d[j] = (1/(1+LR));
       b[j] = b1*d[j];
       vb[j] = (Sb+b[j]*b[j])/(df+1);
       e = e - gen(_,j)*(b[j]-b0);
