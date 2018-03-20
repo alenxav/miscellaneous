@@ -40,7 +40,7 @@ SEXP emBC(NumericVector y, NumericMatrix gen, double df = 10, double R2 = 0.5, d
       e = e - gen(_,j)*(b[j]-b0);
     }
     ve = (sum(e*e)+Se)/(n+df);
-    va = (sum(b*b)+Sa)/(p+df)/(Pi*(1-Pi));
+    va = (sum(b*b)+Sa)/(p+df)/(mean(d)-Pi);
     Lmb = ve/va;
     eM = mean(e);
     mu = mu+eM;
