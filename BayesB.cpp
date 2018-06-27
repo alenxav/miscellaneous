@@ -5,8 +5,7 @@ SEXP BayesB(NumericVector y, NumericMatrix X,
         double it = 1500, double bi = 500,
          double pi = 0.95, double df = 5, double R2 = 0.5){
   // Get dimensions of X
-  RNGScope scope;
-  int p = X.ncol(), n = X.nrow(), MCMC = it-bi;
+  int p = X.ncol(), n = X.nrow();
   // Estimate crossproducts and MSx
   NumericVector xx(p), vx(p);
   for(int i=0; i<p; i++){
@@ -17,8 +16,9 @@ SEXP BayesB(NumericVector y, NumericMatrix X,
   double vy = var(y);
   double Sb = (R2)*df*vy/MSx;
   double Se = (1-R2)*df*vy;
+  double mu = mean(y);
   // Create empty objects
-  double b0,b1,eM,h2,C,MU,VE,cj,dj,pj,vg,ve=vy,mu=mean(y);
+  double b0,b1,eM,h2,C,MU,VE,cj,dj,pj,vg,ve=vy;
   NumericVector d(p),b(p),D(p),B(p),VB(p),fit(n);
   NumericVector vb=b+Sb,Lmb=ve/vb,e=y-mu,e1(n),e2(n);
   // MCMC loop
@@ -56,13 +56,14 @@ SEXP BayesB(NumericVector y, NumericMatrix X,
     if(i>bi){MU=MU+mu; B=B+b; D=D+d; VB=VB+vb; VE=VE+ve;}
   }
   // Get posterior means
-  MU = MU/MCMC; B=B/MCMC; D = D/MCMC;
-  VB=VB/MCMC; VE=VE/MCMC;
+  double MCMC = it-bi;
+  MU = MU/MCMC; B = B/MCMC; D = D/MCMC;
+  VB = VB/MCMC; VE = VE/MCMC;
   // Get fitted values and h2
   vg = sum(VB); h2 = vg/(vg+VE);
   for(int k=0; k<n; k++){fit[k] = sum(X(k,_)*B)+MU;}
   // Return output
   return List::create(Named("mu") = MU, Named("b") = B,
-                  Named("d") = D, Named("hat") = fit,
-                  Named("vb") = VB, Named("ve") = VE,
-                  Named("h2") = h2, Named("MSx") = MSx);}
+                      Named("d") = D,   Named("hat") = fit,
+                      Named("vb") = VB, Named("ve") = VE,
+                      Named("h2") = h2, Named("MSx") = MSx);}
