@@ -15,7 +15,7 @@ SEXP MixDist(NumericVector y, NumericMatrix X, double pi=0.7){
   double MSx= sum(vx);
   // Get regularization parameters
   double mu = mean(y);
-  double L1 = 0.5*MSx*(var(y)*alpha);
+  double L1 = 0.5*MSx*(sd(y)*alpha);
   double L2 = 0.5*MSx;
   // Create empty objects
   double b0,b1,b2,eM,C,cj,dj,pj;
@@ -60,7 +60,7 @@ SEXP MixDist(NumericVector y, NumericMatrix X, double pi=0.7){
     mu = mu+eM;
     e = e-eM;
     ve = sum(e*y)/(n-1);
-    L1 = 0.5*MSx*(ve*alpha);
+    L1 = 0.5*MSx*(sqrt(ve)*alpha);
   }
   // Get fitted values
   for(int k=0; k<n; k++){fit[k] = sum(X(k,_)*b)+mu;}
