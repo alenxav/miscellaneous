@@ -1,7 +1,7 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 // [[Rcpp::export]]
-NumericVector SPC3(NumericVector y,
+NumericVector SPC(NumericVector y,
                    NumericVector blk, NumericVector row, NumericVector col,
                    int rN=2, int cN=2){
   int n = y.size(); NumericVector Cov(n), Phe(n), Obs(n);
