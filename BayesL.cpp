@@ -28,9 +28,7 @@ SEXP BayesL(NumericVector y, NumericMatrix X,
     for(int j=0; j<p; j++){
       b0 = b[j];
       // Sample marker effect
-      b1 = R::rnorm((sum(X(_,j)*e)+xx[j]*b0)/(xx[j]+Lmb[j]),
-                    sqrt(ve/(xx[j]+Lmb[j])));
-      e = e-X(_,j)*(b1-b0);
+      b1 = R::rnorm((sum(X(_,j)*e)+xx[j]*b0)/(xx[j]+Lmb[j]),sqrt(ve/(xx[j]+Lmb[j])));
       b[j] = b1;
       // Update marker variance and residuals
       vb[j] = (Sb+b1*b1)/R::rchisq(df+1);

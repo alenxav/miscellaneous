@@ -1,7 +1,7 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 // [[Rcpp::export]]
-SEXP BayesA(NumericVector y, NumericMatrix X,
+SEXP BayesRR(NumericVector y, NumericMatrix X,
             double it = 1500, double bi = 500,
             double df = 5, double R2 = 0.5){
   // Get dimensions of X
@@ -18,26 +18,23 @@ SEXP BayesA(NumericVector y, NumericMatrix X,
   double Se = (1-R2)*df*vy;
   double mu = mean(y);
   // Create empty objects
-  double b0,b1,eM,h2,MU,VE,vg,ve=vy;
-  NumericVector b(p),B(p),VB(p),fit(n);
-  NumericVector vb=b+Sb,Lmb=ve/vb,e=y-mu;
+  double b0,b1,eM,h2,MU,VE,VB,vg,ve=vy,vb=Sb,Lmb=ve/vb;
+  NumericVector b(p),B(p),fit(n),e=y-mu;
   // MCMC loop
   for(int i=0; i<it; i++){
     // Update marker effects
     for(int j=0; j<p; j++){
       b0 = b[j];
-      // Sample marker effect
-      b1 = R::rnorm((sum(X(_,j)*e)+xx[j]*b0)/(xx[j]+Lmb[j]),sqrt(ve/(xx[j]+Lmb[j])));
+      b1 = R::rnorm((sum(X(_,j)*e)+xx[j]*b0)/(xx[j]+Lmb),sqrt(ve/(xx[j]+Lmb)));
+      e = e-X(_,j)*(b1-b0);
       b[j] = b1;
-      // Update marker variance and residuals
-      vb[j] = (Sb+b1*b1)/R::rchisq(df+1);
-      e = e - X(_,j)*(b1-b0);
     }
     // Update intercept
     eM = R::rnorm(mean(e),sqrt(ve/n));
     mu = mu+eM; e = e-eM;
-    // Update residual variance and lambda
+    // Update variance components and lambda
     ve = (sum(e*e)+Se)/R::rchisq(n+df);
+    vb = (sum(b*b)+Sb)/R::rchisq(p+df);
     Lmb = ve/vb;
     // Store posterior sums
     if(i>bi){MU=MU+mu; B=B+b; VB=VB+vb; VE=VE+ve;}
@@ -47,7 +44,7 @@ SEXP BayesA(NumericVector y, NumericMatrix X,
   MU = MU/MCMC; B = B/MCMC;
   VB = VB/MCMC; VE = VE/MCMC;
   // Get fitted values and h2
-  vg = sum(VB); h2 = vg/(vg+VE);
+  vg = VB*MSx; h2 = vg/(vg+VE);
   for(int k=0; k<n; k++){fit[k] = sum(X(k,_)*B)+MU;}
   // Return output
   return List::create(Named("mu") = MU, Named("b") = B,
