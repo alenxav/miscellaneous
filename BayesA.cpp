@@ -19,7 +19,7 @@ SEXP BayesA(NumericVector y, NumericMatrix X,
   double mu = mean(y);
   // Create empty objects
   double b0,b1,eM,h2,MU,VE,vg,ve=vy;
-  NumericVector b(p),D(p),B(p),VB(p),fit(n);
+  NumericVector b(p),B(p),VB(p),fit(n);
   NumericVector vb=b+Sb,Lmb=ve/vb,e=y-mu;
   // MCMC loop
   for(int i=0; i<it; i++){
