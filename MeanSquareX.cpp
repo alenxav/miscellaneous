@@ -7,4 +7,4 @@ SEXP MSX(NumericMatrix X){
   for(int k=0; k<p; k++){ xx[k] = sum(X(_,k)*X(_,k));
     m = sum(X(_,k)); sx[k] = m*m/n; }
   double cxx = sum(xx-sx)/(n-1);
-  return List::create(Named("MSx")=cxx,Named("xx")=xx);}
+  return List::create(Named("MSx")=cxx,Named("XX")=xx);}
