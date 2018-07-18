@@ -123,7 +123,13 @@ r2 = round(np.corrcoef(y,hat)[0,1]**2,4)
 
 f = open('Data.csv','rb')
 reader = csv.reader(f)
-headers = reader.next()
+headers = reader.next()[1:(p+1)]
+f.close()
 
-h2
-r2
+Final_a = np.r_[h2,Mu[0],B[0:p]]
+Final_b = np.r_[['H2','Mu'],headers]
+
+# data frame to export
+
+dataframe = pd.DataFrame(Final_a,index=Final_b,columns=['value'])
+dataframe.to_csv('wgr_output.csv')
