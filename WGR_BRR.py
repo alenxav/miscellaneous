@@ -20,7 +20,6 @@ R2 = 0.5
 iterations = 2000
 burnin = 500
 thinning = 3
-alpha = 0.05
 
 # dimensions
 
@@ -40,8 +39,8 @@ MSx = x2.mean()
 # priors
 
 vy = y.var()
-Sb_prior = R2 * (df_prior+2) / MSx
-Se_prior = (1-R2) * (df_prior+2) * vy
+Sb_prior = R2 * (df_prior) / MSx
+Se_prior = (1-R2) * (df_prior) * vy
 
 # starting parameters
 
@@ -75,9 +74,8 @@ for i in range(0,iterations):
   for j in range(0,p):
     b0 = b[j]
     xy = np.dot(gen[:,j],e)+xx[j]*b0
-    vx = xx[j]+lmb*(1-alpha)
-    en = max(0,abs(xy)-lmb*alpha*0.5) * ((xy>0)-0.5)*2
-    b[j] = np.random.normal(en/vx,ve/vx)
+    vx = xx[j]+lmb    
+    b[j] = np.random.normal(xy/vx,ve/vx)
     e = e-gen[:,j]*(b[j]-b0)
     
   # update intercept
