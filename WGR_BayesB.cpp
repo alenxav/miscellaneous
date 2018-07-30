@@ -40,7 +40,7 @@ SEXP BayesB(NumericVector y, NumericMatrix X,
       if(R::rbinom(1,pj)==1){
         b[j] = b1; d[j] = 1;
       }else{
-        b[j] = R::rnorm(0,sqrt(ve/(xx[j]+Lmb[j]))); d[j] = 0;
+        b[j] = 0; d[j] = 0;
       }
       // Update marker variance and residuals
       vb[j] = (Sb+b[j]*b[j])/R::rchisq(df+1);
