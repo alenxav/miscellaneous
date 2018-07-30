@@ -1,7 +1,7 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 // [[Rcpp::export]]
-SEXP rrReml(NumericVector y, NumericMatrix gen, int maxit = 500, double tol = 10e-6){
+SEXP emREML(NumericVector y, NumericMatrix gen, int maxit = 500, double tol = 10e-6){
   // Functions starts here
   int p = gen.ncol();
   int n = gen.nrow();
