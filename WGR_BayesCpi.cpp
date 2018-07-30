@@ -2,8 +2,8 @@
 using namespace Rcpp;
 // [[Rcpp::export]]
 SEXP BayesCpi(NumericVector y, NumericMatrix X,
-            double it = 1500, double bi = 500,
-            double df = 5, double R2 = 0.5){
+              double it = 1500, double bi = 500,
+              double df = 5, double R2 = 0.5){
   // Get dimensions of X
   int p = X.ncol(), n = X.nrow();
   // Estimate crossproducts and MSx
@@ -19,7 +19,7 @@ SEXP BayesCpi(NumericVector y, NumericMatrix X,
   double Se = df*(1-R2)*vy;
   double mu = mean(y);
   // Create empty objects
-  double b0,b1,eM,h2,C,MU,VB,VE,Pi,cj,dj,pj,vg,ve=vy,vb=Sb;
+  double b0,b1,b2,eM,h2,C,MU,VB,VE,Pi,cj,dj,pj,vg,ve=vy,vb=Sb;
   double PiAlpha,PiBeta,PiMean,PiVar;
   NumericVector d(p),b(p),D(p),B(p),fit(n);
   NumericVector e=y-mu,e1(n),e2(n);
@@ -31,8 +31,8 @@ SEXP BayesCpi(NumericVector y, NumericMatrix X,
     for(int j=0; j<p; j++){
       b0 = b[j];
       // Sample marker effect
-      b1 = R::rnorm((sum(X(_,j)*e)+xx[j]*b0)/(xx[j]+Lmb),
-                    sqrt(ve/(xx[j]+Lmb)));
+      b1 = R::rnorm((sum(X(_,j)*e)+xx[j]*b0)/(xx[j]+Lmb),sqrt(ve/(xx[j]+Lmb)));
+      b2 = R::rnorm(0,sqrt(ve/(xx[j]+Lmb)));
       e1 = e-X(_,j)*(b1-b0); // Pr(with marker)
       e2 = e-X(_,j)*(0-b0); // Pr(without marker)
       // Pr(marker included)
@@ -43,7 +43,7 @@ SEXP BayesCpi(NumericVector y, NumericMatrix X,
       if(R::rbinom(1,pj)==1){
         b[j] = b1; d[j] = 1;
       }else{
-        b[j] = R::rnorm(0,sqrt(ve/(xx[j]+Lmb))); d[j] = 0;
+        b[j] = b2; d[j] = 0;
       }
       // Update residuals
       e = e - X(_,j)*(b[j]-b0);
@@ -74,5 +74,5 @@ SEXP BayesCpi(NumericVector y, NumericMatrix X,
   // Return output
   return List::create(Named("mu") = MU, Named("b") = B,
                       Named("d") = D, Named("pi") = Pi,
-                      Named("hat") = fit, Named("h2") = h2
+                      Named("hat") = fit, Named("h2") = h2,
                       Named("vb") = VB, Named("ve") = VE);}
