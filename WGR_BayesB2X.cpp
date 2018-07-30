@@ -2,8 +2,8 @@
 using namespace Rcpp;
 // [[Rcpp::export]]
 SEXP BayesB2(NumericVector y, NumericMatrix X1, NumericMatrix X2,
-            double it = 1500, double bi = 500,
-            double pi = 0.95, double df = 5, double R2 = 0.5){
+             double it = 1500, double bi = 500,
+             double pi = 0.95, double df = 5, double R2 = 0.5){
   // Get dimensions of X
   int n = X1.nrow();
   int p1 = X1.ncol();
@@ -26,7 +26,7 @@ SEXP BayesB2(NumericVector y, NumericMatrix X1, NumericMatrix X2,
   double Se = (1-R2)*df*vy;
   double mu = mean(y);
   // Create empty objects
-  double b_t0,b_t1,eM,h2,C,MU,VE,cj,dj,pj,vg,ve=vy;
+  double b_t0,b_t1,b_t2,eM,h2,C,MU,VE,cj,dj,pj,vg,ve=vy;
   NumericVector d1(p1),b1(p1),D1(p1),B1(p1),VB1(p1),fit(n);
   NumericVector d2(p2),b2(p2),D2(p2),B2(p2),VB2(p2);
   NumericVector vb1=b1+Sb1,vb2=b2+Sb2,Lmb1=ve/vb1,Lmb2=ve/vb2,e=y-mu,e1(n),e2(n);
@@ -37,10 +37,10 @@ SEXP BayesB2(NumericVector y, NumericMatrix X1, NumericMatrix X2,
     for(int j=0; j<p1; j++){
       b_t0 = b1[j];
       // Sample marker effect
-      b_t1 = R::rnorm((sum(X1(_,j)*e)+xx1[j]*b_t0)/(xx1[j]+Lmb1[j]),
-                    sqrt(ve/(xx1[j]+Lmb1[j])));
+      b_t1 = R::rnorm((sum(X1(_,j)*e)+xx1[j]*b_t0)/(xx1[j]+Lmb1[j]),sqrt(ve/(xx1[j]+Lmb1[j])));
+      b_t2 = R::rnorm(0,sqrt(ve/(xx1[j]+Lmb1[j])));
       e1 = e-X1(_,j)*(b_t1-b_t0); // Pr(with marker)
-      e2 = e-X1(_,j)*(0-b_t0); // Pr(without marker)
+      e2 = e-X1(_,j)*(b_t2-b_t0); // Pr(without marker)
       // Pr(marker included)
       cj = (1-pi)*exp(C*sum(e1*e1));
       dj = (pi)*exp(C*sum(e2*e2));
@@ -49,7 +49,7 @@ SEXP BayesB2(NumericVector y, NumericMatrix X1, NumericMatrix X2,
       if(R::rbinom(1,pj)==1){
         b1[j] = b_t1; d1[j] = 1;
       }else{
-        b1[j] = 0; d1[j] = 0;
+        b1[j] = b_t2; d1[j] = 0;
       }
       // Update marker variance and residuals
       vb1[j] = (Sb1+b1[j]*b1[j])/R::rchisq(df+1);
@@ -59,10 +59,10 @@ SEXP BayesB2(NumericVector y, NumericMatrix X1, NumericMatrix X2,
     for(int j=0; j<p2; j++){
       b_t0 = b2[j];
       // Sample marker effect
-      b_t1 = R::rnorm((sum(X2(_,j)*e)+xx2[j]*b_t0)/(xx2[j]+Lmb2[j]),
-                      sqrt(ve/(xx2[j]+Lmb2[j])));
+      b_t1 = R::rnorm((sum(X2(_,j)*e)+xx2[j]*b_t0)/(xx2[j]+Lmb2[j]),sqrt(ve/(xx2[j]+Lmb2[j])));
+      b_t2 = R::rnorm(0,sqrt(ve/(xx2[j]+Lmb2[j])));
       e1 = e-X2(_,j)*(b_t1-b_t0); // Pr(with marker)
-      e2 = e-X2(_,j)*(0-b_t0); // Pr(without marker)
+      e2 = e-X2(_,j)*(b_t2-b_t0); // Pr(without marker)
       // Pr(marker included)
       cj = (1-pi)*exp(C*sum(e1*e1));
       dj = (pi)*exp(C*sum(e2*e2));
@@ -71,7 +71,7 @@ SEXP BayesB2(NumericVector y, NumericMatrix X1, NumericMatrix X2,
       if(R::rbinom(1,pj)==1){
         b2[j] = b_t1; d2[j] = 1;
       }else{
-        b2[j] = 0; d2[j] = 0;
+        b2[j] = b_t2; d2[j] = 0;
       }
       // Update marker variance and residuals
       vb2[j] = (Sb2+b2[j]*b2[j])/R::rchisq(df+1);
@@ -89,7 +89,7 @@ SEXP BayesB2(NumericVector y, NumericMatrix X1, NumericMatrix X2,
       MU=MU+mu; VE=VE+ve;
       B1=B1+b1; D1=D1+d1; VB1=VB1+vb1; 
       B2=B2+b2; D2=D2+d2; VB2=VB2+vb2; 
-      }
+    }
   }
   // Get posterior means
   double MCMC = it-bi;
