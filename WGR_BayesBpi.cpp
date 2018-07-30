@@ -19,7 +19,7 @@ SEXP BayesBpi(NumericVector y, NumericMatrix X,
   double Se = (1-R2)*df*vy;
   double mu = mean(y);
   // Create empty objects
-  double b0,b1,eM,h2,C,MU,VE,Pi,cj,dj,pj,vg,ve=vy;
+  double b0,b1,b2,eM,h2,C,MU,VE,Pi,cj,dj,pj,vg,ve=vy;
   double PiAlpha,PiBeta,PiMean,PiVar;
   NumericVector d(p),b(p),D(p),B(p),VB(p),fit(n);
   NumericVector vb=b+Sb,Lmb=ve/vb,e=y-mu,e1(n),e2(n);
@@ -30,10 +30,10 @@ SEXP BayesBpi(NumericVector y, NumericMatrix X,
     for(int j=0; j<p; j++){
       b0 = b[j];
       // Sample marker effect
-      b1 = R::rnorm((sum(X(_,j)*e)+xx[j]*b0)/(xx[j]+Lmb[j]),
-                    sqrt(ve/(xx[j]+Lmb[j])));
+      b1 = R::rnorm((sum(X(_,j)*e)+xx[j]*b0)/(xx[j]+Lmb[j]),qrt(ve/(xx[j]+Lmb[j])));
+      b2 = R::rnorm(0,qrt(ve/(xx[j]+Lmb[j])));        
       e1 = e-X(_,j)*(b1-b0); // Pr(with marker)
-      e2 = e-X(_,j)*(0-b0); // Pr(without marker)
+      e2 = e-X(_,j)*(b2-b0); // Pr(without marker)
       // Pr(marker included)
       cj = (1-pi)*exp(C*sum(e1*e1));
       dj = (pi)*exp(C*sum(e2*e2));
@@ -42,7 +42,7 @@ SEXP BayesBpi(NumericVector y, NumericMatrix X,
       if(R::rbinom(1,pj)==1){
         b[j] = b1; d[j] = 1;
       }else{
-        b[j] = R::rnorm(0,sqrt(ve/(xx[j]+Lmb[j]))); d[j] = 0;
+        b[j] = b2; d[j] = 0;
       }
       // Update marker variance and residuals
       vb[j] = (Sb+b[j]*b[j])/R::rchisq(df+1);
