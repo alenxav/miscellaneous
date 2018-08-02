@@ -52,7 +52,7 @@ SEXP wREML(NumericVector y, NumericMatrix X,
   for(int k=0; k<n; k++){ fit[k] = sum(X(k,_)*b)+mu; }
   h2 = vb*MSx/(vb*MSx+ve);
   // Genome-wide screening
-  NumericVector LRT(p),PVAL(p),y0(n),e0(n),e1(n),b_ols(p);
+  NumericVector LRT(p),y0(n),e0(n),e1(n),b_ols(p);
   double ve0, ve1, L0, L1;
   for(int j=0; j<p; j++){
     // Full conditional phenotype
@@ -71,10 +71,6 @@ SEXP wREML(NumericVector y, NumericMatrix X,
     L0 = -sum(e0*e0)/(2*ve0)-0.5*n*log(6.28*ve0);
     L1 = -sum(e1*e1)/(2*ve1)-0.5*n*log(6.28*ve1);
     LRT[j] = 2*(L1-L0);}
-  PVAL = -log10(1-pchisq(LRT,1,true));
   // Output
-  return List::create(Named("mu")=mu, Named("b")=b,
-                      Named("b_LS")=b_ols, Named("hat")=fit,
-                      Named("h2")=h2, Named("Va")=vb*MSx, 
-                      Named("Vb")=vb,  Named("Ve")=ve,
-                      Named("LRT")=LRT, Named("PVAL")=PVAL);}
+  return List::create(Named("mu")=mu, Named("b")=b, Named("hat")=fit,
+                      Named("h2")=h2, Named("LRT")=LRT);}
