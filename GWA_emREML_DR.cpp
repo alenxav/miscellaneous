@@ -1,7 +1,7 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 // [[Rcpp::export]]
-SEXP GREML(NumericVector y, NumericMatrix Z,
+SEXP emREML(NumericVector y, NumericMatrix Z,
      Rcpp::Nullable<Rcpp::NumericVector> D = R_NilValue,
      Rcpp::Nullable<Rcpp::NumericVector> R = R_NilValue,
      int maxit = 500, double tol = 10e-8){
