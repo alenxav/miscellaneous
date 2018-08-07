@@ -43,8 +43,8 @@ SEXP tREML(NumericVector y, NumericMatrix X,
   // Fitting the model
   for(int k=0; k<n; k++){ fit[k] = sum(X(k,_)*b)+mu; }
   // Output
-  d=Ve/(Va*Lmb);
   Va=(Vy-Ve)/MSx;
+  d=Ve/(Va*Lmb);
   h2=Va*MSx/(Va*MSx+Ve);
   return List::create(Named("mu")=mu, Named("b")=b,
                       Named("hat")=fit, Named("h2")=h2, Named("D")=d,
