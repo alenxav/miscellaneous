@@ -1,7 +1,7 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 // [[Rcpp::export]]
-void IMP(NumericMatrix X){
+NumericMatrix IMP(NumericMatrix X){
   int p = X.ncol(); int n = X.nrow();
   LogicalVector MIS(n); NumericVector x(n);
   NumericVector z; double EXP;
@@ -10,4 +10,4 @@ void IMP(NumericMatrix X){
       x = X(_,j); MIS = is_na(x);
       z = x[!MIS]; EXP = mean(z);
       X(_,j) = ifelse(MIS,EXP,x);}
-    };};
+  };return(X);};
