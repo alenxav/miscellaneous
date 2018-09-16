@@ -13,6 +13,8 @@ SEXP BCpi(NumericVector y, NumericMatrix X,
     vx[i] = var(X(_,i));}
   double MSx = sum(vx);
   // Get priors
+  double priorA = 1;
+  double priorB = 1;
   double pi = 0.5;
   double vy = var(y);
   double Sb = df*(R2)*vy/MSx/(1-pi);
@@ -58,8 +60,8 @@ SEXP BCpi(NumericVector y, NumericMatrix X,
     Lmb = ve/vb;
     // Update Pi from beta
     PiMean = mean(d); PiVar = var(d);
-    PiAlpha = 4+((1-PiMean)/PiVar-1/PiMean)*(PiMean*PiMean);
-    PiBeta = 1+PiAlpha*(1/PiMean-1);
+    PiAlpha = priorA+((1-PiMean)/PiVar-1/PiMean)*(PiMean*PiMean);
+    PiBeta = priorB+PiAlpha*(1/PiMean-1);
     pi = R::rbeta(PiAlpha,PiBeta);
     Sb = df*(R2)*vy/MSx/(1-pi);
     // Store posterior sums
