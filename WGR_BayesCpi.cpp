@@ -1,8 +1,8 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 // [[Rcpp::export]]
-SEXP BayesCpi(NumericVector y, NumericMatrix X,
-              double it = 1500, double bi = 500,
+SEXP BCpi(NumericVector y, NumericMatrix X,
+              double it = 2500, double bi = 500,
               double df = 5, double R2 = 0.5){
   // Get dimensions of X
   int p = X.ncol(), n = X.nrow();
@@ -36,9 +36,10 @@ SEXP BayesCpi(NumericVector y, NumericMatrix X,
       e1 = e-X(_,j)*(b1-b0); // Pr(with marker)
       e2 = e-X(_,j)*(0-b0); // Pr(without marker)
       // Pr(marker included)
-      cj = (1-pi)*exp(C*sum(e1*e1));
-      dj = (pi)*exp(C*sum(e2*e2));
-      pj = cj/(cj+dj);
+      cj = exp(C*sum(e1*e1)); // Likelihood(with marker)
+      dj = exp(C*sum(e2*e2)); // Likelihood(without marker)
+      pj = (1-pi)*cj/dj;
+      if(pj>1) pj = 1;
       // Smple from Bernoulli
       if(R::rbinom(1,pj)==1){
         b[j] = b1; d[j] = 1;
@@ -52,7 +53,7 @@ SEXP BayesCpi(NumericVector y, NumericMatrix X,
     eM = R::rnorm(mean(e),sqrt(ve/n));
     mu = mu+eM; e = e-eM;
     // Update variance components and lambda
-    vb = (sum(b*b)+Sb)/R::rchisq(df+p);
+    vb = (sum(b*b)+Sb)/R::rchisq(p+df);
     ve = (sum(e*e)+Se)/R::rchisq(n+df);
     Lmb = ve/vb;
     // Update Pi from beta
@@ -68,6 +69,8 @@ SEXP BayesCpi(NumericVector y, NumericMatrix X,
   double MCMC = it-bi;
   MU = MU/MCMC; B = B/MCMC; D = D/MCMC;
   VB = VB/MCMC; VE = VE/MCMC; Pi = Pi/MCMC;
+  // Getting GWAS results
+  NumericVector PVAL = -log(1-D);
   // Get fitted values and h2
   vg = VB*MSx; h2 = vg/(vg+VE);
   for(int k=0; k<n; k++){fit[k] = sum(X(k,_)*B)+MU;}
@@ -75,4 +78,5 @@ SEXP BayesCpi(NumericVector y, NumericMatrix X,
   return List::create(Named("mu") = MU, Named("b") = B,
                       Named("d") = D, Named("pi") = Pi,
                       Named("hat") = fit, Named("h2") = h2,
-                      Named("vb") = VB, Named("ve") = VE);}
+                      Named("vb") = VB, Named("ve") = VE,
+                      Named("PVAL") = PVAL);}
