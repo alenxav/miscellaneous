@@ -21,7 +21,7 @@ SEXP BDpi(NumericVector y, NumericMatrix X,
   double Se = (1-R2)*df*vy;
   double mu = mean(y);
   // Create empty objects
-  double b0,b1,b2,eM,h2,C,MU,VE,Pi,cj,dj,pj,vg,ve=vy;
+  double b0,b1,b2,eM,h2,C,MU,VE,Pi,pj,vg,ve=vy;
   double PiAlpha,PiBeta,PiMean,PiVar;
   NumericVector d(p),b(p),D(p),B(p),VB(p),fit(n);
   NumericVector vb=b+Sb,Lmb=ve/vb,e=y-mu,e1(n),e2(n);
@@ -37,9 +37,7 @@ SEXP BDpi(NumericVector y, NumericMatrix X,
       e1 = e-X(_,j)*(b1-b0); // Pr(with marker)
       e2 = e-X(_,j)*(b2-b0); // Pr(without marker)
       // Pr(marker included)
-      cj = exp(C*sum(e1*e1)); // Likelihood(with marker)
-      dj = exp(C*sum(e2*e2)); // Likelihood(without marker)
-      pj = (1-pi)*cj/dj;
+      pj = (1-pi)*exp(C*(sum(e1*e1)-sum(e2*e2)));
       if(pj>1) pj = 1;
       // Smple from Bernoulli
       if(R::rbinom(1,pj)==1){
