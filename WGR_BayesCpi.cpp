@@ -4,7 +4,7 @@ using namespace Rcpp;
 SEXP BCpi(NumericVector y, NumericMatrix X,
               double it = 2500, double bi = 500,
               double df = 5, double R2 = 0.5){
-  // Get dimensions of X
+   // Get dimensions of X
   int p = X.ncol(), n = X.nrow();
   // Estimate crossproducts and MSx
   NumericVector xx(p), vx(p);
@@ -13,8 +13,6 @@ SEXP BCpi(NumericVector y, NumericMatrix X,
     vx[i] = var(X(_,i));}
   double MSx = sum(vx);
   // Get priors
-  double priorA = 1;
-  double priorB = 1;
   double pi = 0.5;
   double vy = var(y);
   double Sb = df*(R2)*vy/MSx/(1-pi);
@@ -22,9 +20,8 @@ SEXP BCpi(NumericVector y, NumericMatrix X,
   double mu = mean(y);
   // Create empty objects
   double b0,b1,b2,eM,h2,C,MU,VB,VE,Pi,pj,vg,ve=vy,vb=Sb;
-  double PiAlpha,PiBeta,PiMean,PiVar;
   NumericVector d(p),b(p),D(p),B(p),fit(n);
-  NumericVector e=y-mu,e1(n),e2(n);
+  NumericVector e=y-mu,e1(n),e2(n),xb1(n),xb2(n);
   double Lmb=ve/vb;
   // MCMC loop
   for(int i=0; i<it; i++){
@@ -34,20 +31,20 @@ SEXP BCpi(NumericVector y, NumericMatrix X,
       b0 = b[j];
       // Sample marker effect
       b1 = R::rnorm((sum(X(_,j)*e)+xx[j]*b0)/(xx[j]+Lmb),sqrt(ve/(xx[j]+Lmb)));
+      xb1 = X(_,j)*(b1-b0);
+      e1 = e - xb1; // Pr(with marker)
       b2 = R::rnorm(0,sqrt(ve/(xx[j]+Lmb)));
-      e1 = e-X(_,j)*(b1-b0); // Pr(with marker)
-      e2 = e-X(_,j)*(0-b0); // Pr(without marker)
+      xb2 = X(_,j)*(b2-b0);
+      e2 = e - xb2; // Pr(without marker)
       // Pr(marker included)
       pj = (1-pi)*exp(C*(sum(e1*e1)-sum(e2*e2)));
       if(pj>1) pj = 1;
       // Smple from Bernoulli
       if(R::rbinom(1,pj)==1){
-        b[j] = b1; d[j] = 1;
+        b[j] = b1; d[j] = 1; e = e-xb1;
       }else{
-        b[j] = b2; d[j] = 0;
+        b[j] = b2; d[j] = 0; e = e-xb2;
       }
-      // Update residuals
-      e = e - X(_,j)*(b[j]-b0);
     }
     // Update intercept
     eM = R::rnorm(mean(e),sqrt(ve/n));
@@ -57,13 +54,10 @@ SEXP BCpi(NumericVector y, NumericMatrix X,
     ve = (sum(e*e)+Se)/R::rchisq(n+df);
     Lmb = ve/vb;
     // Update Pi from beta
-    PiMean = mean(d); PiVar = var(d);
-    PiAlpha = priorA+((1-PiMean)/PiVar-1/PiMean)*(PiMean*PiMean);
-    PiBeta = priorB+PiAlpha*(1/PiMean-1);
-    pi = R::rbeta(PiAlpha,PiBeta);
+    pi = mean(d);
     Sb = df*(R2)*vy/MSx/(1-pi);
     // Store posterior sums
-    if(i>bi){MU=MU+mu; B=B+b; D=D+d; VB=VB+vb; VE=VE+ve; Pi = Pi+pi;}
+    if(i>bi){ MU=MU+mu; B=B+b; D=D+d; VB=VB+vb; VE=VE+ve; Pi=Pi+pi; }
   }
   // Get posterior means
   double MCMC = it-bi;
