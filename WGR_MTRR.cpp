@@ -2,7 +2,7 @@
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-SEXP MVRR(NumericMatrix Y, NumericMatrix X, bool Choleski = false){
+SEXP mrr(NumericMatrix Y, NumericMatrix X, bool Choleski = false){
   
   // Convergence parameters
   int maxit = 350;
@@ -120,4 +120,4 @@ SEXP MVRR(NumericMatrix Y, NumericMatrix X, bool Choleski = false){
   return List::create(Named("mu")=mu, Named("b")=b,
                       Named("hat")=fit, Named("h2")=h2,
                       Named("Vb")=vb, Named("Ve")=ve,
-                      Named("Vy")=vy, Named("MSx")=MSx);}
+                      Named("MSx")=MSx);}
