@@ -2,11 +2,9 @@
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-SEXP mrr(NumericMatrix Y, NumericMatrix X, bool Choleski = false){
-  
-  // Convergence parameters
-  int maxit = 350;
-  double tol = 10e-8;
+SEXP MVRR(NumericMatrix Y, NumericMatrix X,
+          int maxit = 350, double tol = 10e-8, 
+          bool Choleski = false){
   
   // Obtain environment containing function
   Rcpp::Environment base("package:base");
@@ -28,10 +26,10 @@ SEXP mrr(NumericMatrix Y, NumericMatrix X, bool Choleski = false){
   double tmp;
   for(int i=0; i<p; i++){
     for(int j=0; j<k; j++){
-      xx(i,j) = sum(X(_,i)*X(_,i)*o(_,j));
+     xx(i,j) = sum(X(_,i)*X(_,i)*o(_,j));
       tmp = sum(X(_,i)*o(_,j))/n(j);
       vx(i,j) = xx(i,j)/n(j)-tmp*tmp;}}
-  
+      
   //NumericVector MSx = colSums(xx);
   NumericVector MSx = colSums(vx);
   
@@ -47,7 +45,7 @@ SEXP mrr(NumericMatrix Y, NumericMatrix X, bool Choleski = false){
     vb(i,i) = ve(i)/MSx(i);
     rho(i,i) = 1;}
   iG = solve(vb);
-  
+
   // Convergence control
   NumericMatrix bc(p,k);
   int numit = 0;
@@ -79,9 +77,7 @@ SEXP mrr(NumericMatrix Y, NumericMatrix X, bool Choleski = false){
     // Variance components update
     for(int i=0; i<k; i++){
       ve(i) = sum(e(_,i)*y(_,i))/(n(i)-1);
-      if(Choleski){
-        vb(i,i) = (1.1*vy(i)-ve(i))/MSx(i);
-      }else{ vb(i,i) = (vy(i)-ve(i))/MSx(i);}
+      vb(i,i) = (1.01*vy(i)-ve(i))/MSx(i);//Ridging
     }
     
     // Approximate genetic correlation
@@ -90,8 +86,8 @@ SEXP mrr(NumericMatrix Y, NumericMatrix X, bool Choleski = false){
         fit(i,j) = sum(X(i,_)*b(_,j));}}
     for(int i=0; i<k; i++){ 
       for(int j=0; j<k; j++){
-        rho(i,j) = sum(fit(_,i)*fit(_,j))/sqrt(sum(fit(_,i)*fit(_,i))*sum(fit(_,j)*fit(_,j)));
-      }}
+         rho(i,j) = sum(fit(_,i)*fit(_,j))/sqrt(sum(fit(_,i)*fit(_,i))*sum(fit(_,j)*fit(_,j)));
+          }}
     
     // Covariance components
     for(int i=0; i<k; i++){
@@ -99,7 +95,8 @@ SEXP mrr(NumericMatrix Y, NumericMatrix X, bool Choleski = false){
         if(i>j){
           vb(i,j) = rho(i,j)*sqrt(vb(i,i)*vb(j,j));
           vb(j,i) = vb(i,j); }}}
-    for(int i=0; i<k; i++){vb(i,i)=vb(i,i)*1.01;}
+    
+    for(int i=0; i<k; i++){vb(i,i)=vb(i,i)*1.01;} //Ridging
     if(Choleski){iG = chol2inv(vb);}else{iG = solve(vb);}
     
     // Convergence
@@ -108,16 +105,12 @@ SEXP mrr(NumericMatrix Y, NumericMatrix X, bool Choleski = false){
     if( cnv<tol ){break;}}
   
   // Fitting the model
-  for(int i=0; i<n0; i++){ 
-    for(int j=0; j<k; j++){
-      fit(i,j) = sum(X(i,_)*b(_,j))+mu(j);}}
-  
-  // Heritability
   NumericVector h2(k); 
+  for(int i=0; i<n0; i++){for(int j=0; j<k; j++){fit(i,j) = sum(X(i,_)*b(_,j))+mu(j);}}
   for(int i=0; i<k; i++){ h2 = (vb(i,i)*MSx(i))/((vb(i,i)*MSx(i))+ve); }
-  
+    
   // Output
   return List::create(Named("mu")=mu, Named("b")=b,
                       Named("hat")=fit, Named("h2")=h2,
                       Named("Vb")=vb, Named("Ve")=ve,
-                      Named("MSx")=MSx);}
+                      Named("Vy")=vy, Named("MSx")=MSx);}
