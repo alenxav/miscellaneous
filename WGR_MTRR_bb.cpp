@@ -91,6 +91,7 @@ SEXP MVRR(NumericMatrix Y, NumericMatrix X,
       for(int j=0; j<k; j++){
         if(i>j){
           vb(i,j) = rho(i,j)*sqrt(vb(i,i)*vb(j,j));
+          vb(i,j) = vb(i,j)*vb(i,j); // Tuning 
           vb(j,i) = vb(i,j); }}}
     
     for(int i=0; i<k; i++){vb(i,i)=vb(i,i)*1.01;} //Ridging
