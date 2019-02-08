@@ -1,3 +1,5 @@
+#include <Rcpp.h>
+using namespace Rcpp;
 // [[Rcpp::export]]
 SEXP mrr(NumericMatrix Y, NumericMatrix X){
   // Convergence parameters
