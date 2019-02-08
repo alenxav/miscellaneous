@@ -1,7 +1,8 @@
 #include <Rcpp.h>
 using namespace Rcpp;
+
 // [[Rcpp::export]]
-SEXP mrr(NumericMatrix Y, NumericMatrix X){
+SEXP MVRR(NumericMatrix Y, NumericMatrix X){
   // Convergence parameters
   int maxit = 100; double tol = 10e-8;
   // Obtain environment containing function
