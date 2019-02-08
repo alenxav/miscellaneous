@@ -84,6 +84,7 @@ SEXP MVRR(NumericMatrix Y, NumericMatrix X,
     for(int i=0; i<k; i++){ 
       for(int j=0; j<k; j++){
          rho(i,j) = sum(b(_,i)*b(_,j))/sqrt(sum(b(_,i)*b(_,i))*sum(b(_,j)*b(_,j)));
+         rho(i,j) = rho(i,j)*rho(i,j); // tuning
           }}
     
     // Covariance components
