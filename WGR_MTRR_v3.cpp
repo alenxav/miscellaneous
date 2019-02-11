@@ -2,9 +2,9 @@
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-SEXP MVRR(NumericMatrix Y, NumericMatrix X, bool bb = true){
+SEXP MVRR(NumericMatrix Y, NumericMatrix X, bool bb = false){
   // Convergence parameters
-  int maxit = 100; double tol = 10e-8;
+  int maxit = 150; double tol = 10e-8;
   // Obtain environment containing function
   Rcpp::Environment base("package:base");
   Rcpp::Function solve = base["solve"];
@@ -63,14 +63,17 @@ SEXP MVRR(NumericMatrix Y, NumericMatrix X, bool bb = true){
     for(int j=0; j<k; j++){e(_,j) = (e(_,j)-eM(j))*o(_,j);}
     // Method 1) Variance components update from b'b
     if(bb){ 
-      for(int i=0; i<k; i++){for(int j=0; j<k; j++){vb(i,j) = sum(b(_,i)*b(_,j))/(p-1);}}
-      for(int i=0; i<k; i++){ve(i) = sum(e(_,i)*y(_,i))/(n(i)-1);vb(i,i) = (vy(i)-ve(i))/MSx(i);}
-    // Method 2) Variance components update from y'g
-    }else{      
+      for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
+          vb(i,j) = sum(b(_,i)*b(_,j))/(p-2);}}
+      for(int i=0; i<k; i++){
+        ve(i) = sum(e(_,i)*y(_,i))/(n(i)-1);
+        vb(i,i) = (vy(i)-ve(i))/MSx(i);}
+    }else{ 
+      // Method 2) Variance components update from y'g
       for(int i=0; i<k; i++){ ve(i) = sum(e(_,i)*y(_,i))/(n(i)-1);}
       for(int i=0; i<n0; i++){ for(int j=0; j<k; j++){ fit(i,j) = sum(X(i,_)*b(_,j));}}
       for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
-        vb(i,j) = (sum(fit(_,i)*y(_,j))+sum(fit(_,j)*y(_,i))) / ((n(i)*MSx(i))+(n(j)*MSx(j)))}
+        vb(i,j) = (sum(fit(_,i)*y(_,j))+sum(fit(_,j)*y(_,i))) / ((n(i)*MSx(i))+(n(j)*MSx(j))) ;}}
       for(int i=0; i<k; i++){vb(i,i)=vb(i,i)*1.01;}
     }
     iG = solve(vb);
