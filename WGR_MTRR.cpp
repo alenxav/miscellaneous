@@ -4,7 +4,7 @@ using namespace Rcpp;
 // [[Rcpp::export]]
 SEXP MVRR(NumericMatrix Y, NumericMatrix X){
   // Convergence parameters
-  int maxit = 100; double tol = 10e-8;
+  int maxit = 150; double tol = 10e-8;
   // Obtain environment containing function
   Rcpp::Environment base("package:base");
   Rcpp::Function solve = base["solve"];
@@ -63,24 +63,12 @@ SEXP MVRR(NumericMatrix Y, NumericMatrix X){
     mu = mu+eM;
     for(int j=0; j<k; j++){e(_,j) = (e(_,j)-eM(j))*o(_,j);}
     // Variance components update
-    for(int i=0; i<k; i++){
-      ve(i) = sum(e(_,i)*y(_,i))/(n(i)-1);
-      vb(i,i) = (1.01*vy(i)-ve(i))/MSx(i);} //Ridging
-    // Approximate genetic correlation
-    for(int i=0; i<n0; i++){ 
-      for(int j=0; j<k; j++){
-        fit(i,j) = sum(X(i,_)*b(_,j));}}
-    for(int i=0; i<k; i++){ 
-      for(int j=0; j<k; j++){
-         rho(i,j) = sum(fit(_,i)*fit(_,j))/sqrt(sum(fit(_,i)*fit(_,i))*sum(fit(_,j)*fit(_,j)));
-         }}
-    // Covariance components
-    for(int i=0; i<k; i++){
-      for(int j=0; j<k; j++){
-        if(i>j){
-          vb(i,j) = rho(i,j)*sqrt(vb(i,i)*vb(j,j));
-          vb(j,i) = vb(i,j);}}}
-    for(int i=0; i<k; i++){vb(i,i)=vb(i,i)*1.01;} //Ridging
+    for(int i=0; i<k; i++){ ve(i) = sum(e(_,i)*y(_,i))/(n(i)-1);}
+    for(int i=0; i<n0; i++){ for(int j=0; j<k; j++){ fit(i,j) = sum(X(i,_)*b(_,j));}}
+    for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
+      vb(i,j) = (sum(fit(_,i)*y(_,j))+sum(fit(_,j)*y(_,i))) / ((n(i)*MSx(i))+(n(j)*MSx(j))) ;}}
+      //vb(i,j) = sqrt(sum(fit(_,i)*y(_,j))*sum(fit(_,j)*y(_,i))) / sqrt((n(i)*MSx(i))*(n(j)*MSx(j)));}}
+    for(int i=0; i<k; i++){vb(i,i)=vb(i,i);}
     iG = solve(vb);
     // Convergence
     ++numit;
@@ -93,5 +81,4 @@ SEXP MVRR(NumericMatrix Y, NumericMatrix X){
   // Output
   return List::create(Named("mu")=mu, Named("b")=b,
                       Named("hat")=fit, Named("h2")=h2,
-                      Named("Vb")=vb, Named("Ve")=ve, Named("rho")=rho,
-                      Named("Vy")=vy, Named("MSx")=MSx);}
+                      Named("Vb")=vb, Named("Ve")=ve);}
