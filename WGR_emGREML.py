@@ -1,10 +1,7 @@
 import numpy as np
-import pandas as pd
-import csv
 
-Q = np.genfromtxt('Data.csv',delimiter=',')
-gen = Q[1:Q.shape[0],1:Q.shape[1]]
-y = Q[1:Q.shape[0],0]
+# gen = numeric matrix where rows are individuals, columns are SNPs
+# y = numeric vector with phenotypes
 
 #####################
 # FITTING THE MODEL #
@@ -54,20 +51,3 @@ print('Her H2 = '+str(round(h2,2)))
 hat = mu + np.dot(gen,b)
 r = np.corrcoef(y,hat)[0,1]
 print('GOF (cor) = '+str(round(r2,2)))
-
-##################
-# EXPORT RESULTS #
-##################
-
-f = open('Data.csv','rb')
-reader = csv.reader(f)
-headers = reader.next()[1:(p+1)]
-f.close()
-
-Final_a = np.r_[mu,b]
-Final_b = np.r_[['Mu'],headers]
-dataframe = pd.DataFrame(Final_a,index=Final_b,columns=['Effect'])
-dataframe.to_csv('Effects.csv')
-
-dataframe = pd.DataFrame(hat,index=np.arange(n)+1,columns=['Hat'])
-dataframe.to_csv('GEBV.csv')
