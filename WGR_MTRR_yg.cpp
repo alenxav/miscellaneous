@@ -4,18 +4,20 @@ using namespace Rcpp;
 // [[Rcpp::export]]
 SEXP MVRR(NumericMatrix Y, NumericMatrix X){
   // Convergence parameters
-  int maxit = 150; double tol = 10e-8;
+  int maxit = 200; double tol = 10e-8;
   // Obtain environment containing function
   Rcpp::Environment base("package:base");
   Rcpp::Function solve = base["solve"];
   // Functions starts here
   int k = Y.ncol(), p = X.ncol(), n0 = X.nrow();
-  // Handle missings Y's
   NumericMatrix fit(n0,k),o(n0,k),y(n0,k),e(n0,k);
   for(int i=0; i<k; i++){
     o(_,i) = ifelse(is_na(Y(_,i)),0,1);
     y(_,i) = ifelse(is_na(Y(_,i)),0,Y(_,i));}
   NumericVector n = colSums(o);
+  // Mu
+  NumericVector mu = colSums(y)/n;
+  for(int j=0; j<k; j++){y(_,j) = (y(_,j)-mu(j))*o(_,j);}
   // Marker variance
   NumericMatrix xx(p,k), vx(p,k);
   double tmp;
@@ -28,11 +30,10 @@ SEXP MVRR(NumericMatrix Y, NumericMatrix X){
   NumericVector MSx = colSums(vx);
   // Beta, intersept and residuals
   NumericMatrix b(p,k),vb(k,k),iG(k,k),rho(k,k),LHS(k,k);
-  NumericVector b0(k),b1(k),eM(k),mu(k),vy(k),ve(k),RHS(k);
-  mu = colSums(y)/n;
+  NumericVector b0(k),b1(k),vy(k),ve(k),RHS(k);
   for(int i=0; i<k; i++){for(int j=0; j<k; j++){vb(i,j) = 0;}}
   for(int i=0; i<k; i++){
-    e(_,i) = (y(_,i)-mu(i))*o(_,i);
+    e(_,i) = y(_,i)+0;
     vy(i) = sum(e(_,i)*e(_,i))/(n(i)-1);
     ve(i) = vy(i)*0.5;
     vb(i,i) = ve(i)/MSx(i);
@@ -57,18 +58,19 @@ SEXP MVRR(NumericMatrix Y, NumericMatrix X){
       b(j,_) = b1;
       // Update residuals
       for(int i=0; i<k; i++){
-        e(_,i) = (e(_,i)-X(_,j)*(b1(i)-b0(i)))*o(_,i);}}
-    // Intercept update
-    eM = colSums(e)/n;
-    mu = mu+eM;
-    for(int j=0; j<k; j++){e(_,j) = (e(_,j)-eM(j))*o(_,j);}
-    // Variance components update
-    for(int i=0; i<k; i++){ ve(i) = sum(e(_,i)*y(_,i))/(n(i)-1);}
-    for(int i=0; i<n0; i++){ for(int j=0; j<k; j++){ fit(i,j) = sum(X(i,_)*b(_,j));}}
+        e(_,i) = (e(_,i)-X(_,j)*(b1(i)-b0(i)))*o(_,i);}
+      }
+    // Residual variance components update
+    for(int i=0; i<k; i++){ ve(i) = (sum(e(_,i)*y(_,i)))/(n(i)-1);}
+    // Genetic covariance components update
+    for(int i=0; i<n0; i++){ for(int j=0; j<k; j++){fit(i,j) = sum(X(i,_)*b(_,j));}}
     for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
-      vb(i,j) = (sum(fit(_,i)*y(_,j))+sum(fit(_,j)*y(_,i))) / ((n(i)*MSx(i))+(n(j)*MSx(j))) ;}}
-      //vb(i,j) = sqrt(sum(fit(_,i)*y(_,j))*sum(fit(_,j)*y(_,i))) / sqrt((n(i)*MSx(i))*(n(j)*MSx(j)));}}
-    for(int i=0; i<k; i++){vb(i,i)=vb(i,i);}
+      // Diag VC
+      if(i==j){
+        vb(i,j) = (1.01*vy(i)-ve(i))/MSx(i);
+      }else{
+        vb(i,j) = (sum(fit(_,i)*y(_,j))+sum(fit(_,j)*y(_,i))) / ((n(i)*MSx(i))+(n(j)*MSx(j)));
+      }}}
     iG = solve(vb);
     // Convergence
     ++numit;
@@ -77,7 +79,7 @@ SEXP MVRR(NumericMatrix Y, NumericMatrix X){
   // Fitting the model
   NumericVector h2(k); 
   for(int i=0; i<n0; i++){for(int j=0; j<k; j++){fit(i,j) = sum(X(i,_)*b(_,j))+mu(j);}}
-  for(int i=0; i<k; i++){ h2 = (vb(i,i)*MSx(i))/((vb(i,i)*MSx(i))+ve); }
+  h2 = 1-ve/vy;
   // Output
   return List::create(Named("mu")=mu, Named("b")=b,
                       Named("hat")=fit, Named("h2")=h2,
