@@ -2,9 +2,7 @@
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-SEXP MVRR(NumericMatrix Y,
-          NumericMatrix X1,
-          NumericMatrix X2){
+SEXP MVRR(NumericMatrix Y, NumericMatrix X1, NumericMatrix X2){
   // Convergence parameters
   int maxit = 200; double tol = 10e-8;
   // Obtain environment containing function
@@ -12,7 +10,7 @@ SEXP MVRR(NumericMatrix Y,
   Rcpp::Function solve = base["solve"];
   // Functions starts here
   int k = Y.ncol(), p1 = X1.ncol(), p2 = X2.ncol(), n0 = X1.nrow();
-  NumericMatrix fit(n0,k),g1(n0,k),g2(n0,k),o(n0,k),y(n0,k),yc(n0,k),e(n0,k);
+  NumericMatrix fit(n0,k),g1(n0,k),g2(n0,k),o(n0,k),y(n0,k),e(n0,k);
   for(int i=0; i<k; i++){
     o(_,i) = ifelse(is_na(Y(_,i)),0,1);
     y(_,i) = ifelse(is_na(Y(_,i)),0,Y(_,i));}
@@ -88,8 +86,6 @@ SEXP MVRR(NumericMatrix Y,
     }
     // Residual variance components update
     for(int i=0; i<k; i++){ ve(i) = (sum(e(_,i)*y(_,i)))/(n(i)-1);}
-    // Prepare y adjusted for fixed effects (yc)
-    for(int i=0; i<k; i++){ yc(_,i) = (y(_,i)-mu(i))*o(_,i);}
     // Genetic covariance components update
     for(int i=0; i<n0; i++){
       for(int j=0; j<k; j++){
@@ -98,8 +94,8 @@ SEXP MVRR(NumericMatrix Y,
         }}
     for(int i=0; i<k; i++){
       for(int j=0; j<k; j++){
-        vb1(i,j) = (sum(g1(_,i)*yc(_,j))+sum(g1(_,j)*yc(_,i))) / ((n(i)*MSx1(i))+(n(j)*MSx1(j)));
-        vb2(i,j) = (sum(g2(_,i)*yc(_,j))+sum(g2(_,j)*yc(_,i))) / ((n(i)*MSx2(i))+(n(j)*MSx2(j)));
+        vb1(i,j) = (sum(g1(_,i)*y(_,j))+sum(g1(_,j)*y(_,i))) / ((n(i)*MSx1(i))+(n(j)*MSx1(j)));
+        vb2(i,j) = (sum(g2(_,i)*y(_,j))+sum(g2(_,j)*y(_,i))) / ((n(i)*MSx2(i))+(n(j)*MSx2(j)));
       }}
     iG1 = solve(vb1);
     iG2 = solve(vb2);
