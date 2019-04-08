@@ -117,5 +117,5 @@ SEXP MVRR(NumericMatrix Y,
                       Named("hat")=fit,
                       Named("X1b1")=g1, Named("X2b2")=g2, 
                       Named("Vb1")=vb1, Named("Vb2")=vb2, 
-                      Named("Va1")=vb1*MSx1, Named("Va2")=vb2*MSx2,
+                      Named("MS1")=MSx1, Named("MS2")=MSx2,
                       Named("Ve")=ve, Named("h2")=h2);}
