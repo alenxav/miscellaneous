@@ -69,16 +69,11 @@ SEXP MVRR(NumericMatrix Y, NumericMatrix X, int maxit = 200, double tol = 10e-8)
     // Genetic covariance components update
     for(int i=0; i<n0; i++){ for(int j=0; j<k; j++){fit(i,j) = sum(X(i,_)*b(_,j));}}
     for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
-      // Diag VC
-      if(i==j){
-        vb(i,j) = (1.001*vy(i)-ve(i)+0.001)/MSx(i);
-      }else{
-        vb(i,j) = (sum(fit(_,i)*y(_,j))+sum(fit(_,j)*y(_,i))) / ((n(i)*MSx(i))+(n(j)*MSx(j)));
-      }}}
+        vb(i,j) = (sum(fit(_,i)*y(_,j))+sum(fit(_,j)*y(_,i))) / ((n(i)*MSx(i))+(n(j)*MSx(j)));}}
     // Generalized inverse of G2A_Kernels
     //iG = solve(vb);
     G = as<arma::mat>(vb);
-    invG = pinv(G,0.001);
+    invG = pinv(G,0.0001);
     iG = wrap(invG);
     // Convergence
     ++numit;
