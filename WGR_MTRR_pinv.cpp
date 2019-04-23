@@ -5,9 +5,7 @@ using namespace Rcpp;
 using arma::pinv;
 
 // [[Rcpp::export]]
-SEXP MVRR(NumericMatrix Y, NumericMatrix X){
-  // Convergence parameters
-  int maxit = 200; double tol = 10e-8;
+SEXP MVRR(NumericMatrix Y, NumericMatrix X, int maxit = 200, double tol = 10e-8){
   // Obtain environment containing function
   Rcpp::Environment base("package:base");
   Rcpp::Function solve = base["solve"];
@@ -73,14 +71,14 @@ SEXP MVRR(NumericMatrix Y, NumericMatrix X){
     for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
       // Diag VC
       if(i==j){
-        vb(i,j) = (vy(i)-ve(i))/MSx(i);
+        vb(i,j) = (1.001*vy(i)-ve(i)+0.001)/MSx(i);
       }else{
         vb(i,j) = (sum(fit(_,i)*y(_,j))+sum(fit(_,j)*y(_,i))) / ((n(i)*MSx(i))+(n(j)*MSx(j)));
       }}}
     // Generalized inverse of G2A_Kernels
     //iG = solve(vb);
     G = as<arma::mat>(vb);
-    invG = pinv(G);
+    invG = pinv(G,0.001);
     iG = wrap(invG);
     // Convergence
     ++numit;
