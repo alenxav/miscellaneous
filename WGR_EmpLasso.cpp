@@ -10,7 +10,6 @@ SEXP Lasso(NumericVector y, NumericMatrix X){
   // Beta, mu and epsilon
   double eM, mu = mean(y);
   NumericVector b(p), e = y-mu;
-  NumericVector d(p); for(int j=0; j<p; j++){d[j]=1;}
   // Marker variance
   NumericVector xx(p);
   for(int i=0; i<p; i++){xx[i] = sum(X(_,i)*X(_,i));}
