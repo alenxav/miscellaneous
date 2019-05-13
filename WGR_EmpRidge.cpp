@@ -2,7 +2,7 @@
 using namespace Rcpp;
 // [[Rcpp::export]]
 SEXP Ridge(NumericVector y, NumericMatrix X){
-  int maxit = 500;
+  int maxit = 300;
   double tol = 10e-8;
   // Functions starts here
   int p = X.ncol();
