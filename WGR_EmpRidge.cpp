@@ -30,7 +30,7 @@ SEXP Ridge(NumericVector y, NumericMatrix X){
       b[j] = (yx[j])/(xx[j]+Lmb);
       e = e-X(_,j)*b[j];}
     // Update regularization and intercept
-    Lmb = mean((yx-b*xx)/b);
+    Lmb = mean(yx/b-xx);
     eM = mean(e);
     mu = mu+eM;
     e = e-eM;
