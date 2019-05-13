@@ -31,7 +31,7 @@ SEXP ElsNet(NumericVector y, NumericMatrix X){
       b[j] = (bL1+bL2)/2;
       e = e-X(_,j)*b[j];}
     // Update regularization and intercept
-    Lmb1 = mean(abs(yx)-b*xx);
+    Lmb1 = mean(abs(yx)-abs(b*xx));
     Lmb2 = 0.5*mean((yx-b*xx)/b);
     eM = mean(e);
     mu = mu+eM;
