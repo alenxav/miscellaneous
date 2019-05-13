@@ -3,7 +3,7 @@ using namespace Rcpp;
 // [[Rcpp::export]]
 SEXP Lasso(NumericVector y, NumericMatrix X){
   int maxit = 300;
-  double tol = 10e-12;
+  double tol = 10e-8;
   // Functions starts here
   int p = X.ncol();
   int n = X.nrow();
