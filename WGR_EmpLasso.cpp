@@ -34,7 +34,7 @@ SEXP Lasso(NumericVector y, NumericMatrix X){
       }
       e = e-X(_,j)*b[j];}
     // Update regularization and intercept
-    Lmb = 2*mean(abs(yx)-b*xx);
+    Lmb = 2*mean(abs(yx)-abs(b*xx));
     eM = mean(e);
     mu = mu+eM;
     e = e-eM;
