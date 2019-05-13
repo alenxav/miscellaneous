@@ -2,8 +2,8 @@
 using namespace Rcpp;
 // [[Rcpp::export]]
 SEXP ElsNet(NumericVector y, NumericMatrix X){
-  int maxit = 500;
-  double tol = 10e-12;
+  int maxit = 300;
+  double tol = 10e-8;
   // Functions starts here
   int p = X.ncol();
   int n = X.nrow();
