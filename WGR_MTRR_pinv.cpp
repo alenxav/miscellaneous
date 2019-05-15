@@ -71,7 +71,7 @@ SEXP MVRR(NumericMatrix Y, NumericMatrix X){
     for(int i=0; i<n0; i++){ for(int j=0; j<k; j++){fit(i,j) = sum(X(i,_)*b(_,j));}}
     for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
         vb(i,j) = (sum(fit(_,i)*y(_,j))+sum(fit(_,j)*y(_,i))) / ((n(i)*MSx(i))+(n(j)*MSx(j)));}}
-    // Generalized inverse of G2A_Kernels
+    // Generalized inverse of G
     G = as<arma::mat>(vb);
     invG = pinv(G,0.0001);
     iG = wrap(invG);
