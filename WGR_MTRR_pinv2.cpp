@@ -3,7 +3,6 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 using namespace Rcpp;
 using arma::pinv;
-
 // [[Rcpp::export]]
 SEXP MV(NumericMatrix Y, NumericMatrix X){
   // Convergence criteria
