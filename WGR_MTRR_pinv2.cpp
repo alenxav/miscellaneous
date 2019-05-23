@@ -19,7 +19,7 @@ SEXP MV(NumericMatrix Y, NumericMatrix X){
     o(_,i) = ifelse(is_na(Y(_,i)),0,1);
     y(_,i) = ifelse(is_na(Y(_,i)),0,Y(_,i));}
   NumericVector n = colSums(o);
-  // Mu
+  // Starting point for overall mean
   NumericVector mu = colSums(y)/n, mu0(k);
   for(int j=0; j<k; j++){eps(_,j) = (y(_,j)-mu(j))*o(_,j);}
   // Marker variance
@@ -64,10 +64,9 @@ SEXP MV(NumericMatrix Y, NumericMatrix X){
       b(j,_) = b1;
       // Update residuals
       for(int i=0; i<k; i++){
-        e(_,i) = (e(_,i)-X(_,j)*(b1(i)-b0(i)))*o(_,i);}
-    }
+        e(_,i) = (e(_,i)-X(_,j)*(b1(i)-b0(i)))*o(_,i);}}
     // Update mu and epsilon
-    mu0 = colSums(e)/n;
+    mu0 = colSums(e)/n; 
     mu = mu+mu0;
     for(int j=0; j<k; j++){eps(_,j) = (y(_,j)-mu(j))*o(_,j);}
     // Residual variance components update
@@ -80,7 +79,7 @@ SEXP MV(NumericMatrix Y, NumericMatrix X){
       vb(i,j) = tmp/((n(i)*MSx(i))+(n(j)*MSx(j)));}}
     // Generalized inverse of G
     G = as<arma::mat>(vb);
-    invG = pinv(G,0.0001);
+    invG = pinv(G,0.01);
     iG = wrap(invG);
     // Convergence
     ++numit;
@@ -90,7 +89,7 @@ SEXP MV(NumericMatrix Y, NumericMatrix X){
   for(int i=0; i<n0; i++){
     for(int j=0; j<k; j++){fit(i,j)=sum(X(i,_)*b(_,j))+mu(j);}}
   // Heritability and genetic correlations
-  NumericVector h2 = 1 - ve/vy;
+  NumericVector h2 = 1-ve/vy;
   NumericMatrix GC(k,k);
   for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
     GC(i,j)=vb(i,j)/(sqrt(vb(i,i)*vb(j,j)));}}
