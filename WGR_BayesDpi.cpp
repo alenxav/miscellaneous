@@ -13,8 +13,6 @@ SEXP BDpi(NumericVector y, NumericMatrix X,
     vx[i] = var(X(_,i));}
   double MSx = sum(vx);
   // Get priors
-  double priorA = 1;
-  double priorB = 1;
   double pi = 0.5;
   double vy = var(y);
   double Sb = (R2)*df*vy/MSx;
@@ -22,7 +20,6 @@ SEXP BDpi(NumericVector y, NumericMatrix X,
   double mu = mean(y);
   // Create empty objects
   double b0,b1,b2,eM,h2,C,MU,VE,Pi,pj,vg,ve=vy;
-  double PiAlpha,PiBeta,PiMean,PiVar;
   NumericVector d(p),b(p),D(p),B(p),VB(p),fit(n);
   NumericVector vb=b+Sb,Lmb=ve/vb,e=y-mu,e1(n),e2(n);
   // MCMC loop
@@ -55,11 +52,7 @@ SEXP BDpi(NumericVector y, NumericMatrix X,
     // Update residual variance and lambda
     ve = (sum(e*e)+Se)/R::rchisq(n+df);
     Lmb = ve/vb;
-    // Update Pi from beta
-    PiMean = mean(d); PiVar = var(d);
-    PiAlpha = priorA+((1-PiMean)/PiVar-1/PiMean)*(PiMean*PiMean);
-    PiBeta = priorB+PiAlpha*(1/PiMean-1);
-    pi = R::rbeta(PiAlpha,PiBeta);
+    pi = mean(d);
     // Store posterior sums
     if(i>bi){
       MU=MU+mu; B=B+b; D=D+d;
@@ -68,7 +61,7 @@ SEXP BDpi(NumericVector y, NumericMatrix X,
   // Get posterior means
   double MCMC = it-bi;
   MU = MU/MCMC; B = B/MCMC; D = D/MCMC;
-  VB = VB/MCMC; VE = VE/MCMC; Pi = Pi/MCMC;
+  VB = VB/MCMC; VE = VE/MCMC; Pi = 1-Pi/MCMC;
   // Getting GWAS results
   NumericVector PVAL = -log(1-D);
   // Get fitted values and h2
