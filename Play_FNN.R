@@ -3,18 +3,19 @@ if(!exists('Y')){
   tmp = SoyNAM::BLUP(family=1:5)
   Y = tmp$Phen
   Z = CNT(tmp$Gen)
+  rm(tmp)
 }
-rm(tmp)
 xx = apply(Z,2,crossprod)
+msx = mean(xx)
+
 n = nrow(Z)
 p = ncol(Z)
 
 # Gradient descent
-GD = function(y,Z,b=NULL,xx=NULL,h2=0.25,rate=0.1){
+GD = function(y,Z,b=NULL,rate=0.1,lmb=0,xx=NULL){
   if(is.null(xx)) xx = apply(Z,2,crossprod)
   if(is.null(b)) b = rep(0,ncol(Z))
   mu = mean(y)
-  lmb = mean(xx)*(1-h2)/h2
   e = y-mu
   for(j in 1:ncol(Z)){
     b0 = b[j]
@@ -29,8 +30,8 @@ compiler::cmpfun(GD)
 
 # Activation function
 #ActFun = function(x){ 1/(1+exp(-x)) }  # Sigmoid
-ActFun = function(x){ x[x<0]=0; return(x) }  # ReLU
 #ActFun = function(x){ (exp(x)-exp(-x))/(exp(x)+exp(-x)) }  # Tanh
+ActFun = function(x){ x[x<0]=0; return(x) }  # ReLU
 
 
 # Fit node
@@ -42,81 +43,138 @@ FN = function(Z,W,I){
 }
 
 # Number of nodes in hidden layer
-HL1 = 10
-HL2 = 10
+HL1 = 8
+HL2 = 4
 
-# Intercepts, Weights and Fits
-I1 = rep(0,HL1)
-I2 = rep(0,HL2)
-I = 0
-W1 = matrix(0,p,HL1)
-W2 = matrix(0,HL1,HL2)
-W3 = rep(0,HL2)
-F1 = matrix(0,n,HL1)
-F2 = matrix(0,n,HL2)
-F3 = rep(0,n)
+# Intercepts (I), Weights (W) and Fits (F)
+I1 = rnorm(HL1,sd=0.1)
+W1 = matrix(rnorm(p*HL1,sd=0.1),p,HL1)
+H1 = FN(Z,W1,I1)
+I2 = rnorm(HL2,sd=0.1)
+W2 = matrix(rnorm(HL1*HL2,sd=0.1),HL1,HL2)
+H2 = FN(H1,W2,I2)
+I3 = mean(Y)
+W3 = GD(Y-I3,H2)$b
+H3 = c(FN(H2,W3,I3))
+
+# Check starting point
+hh = H3
+plot(hh,Y,main='Fitted')
+ee = c(crossprod(Y-hh))
 
 # Learning rate and L2 penalization
-rates = c(0.1,0.8,1)
-H2 = c(0.5,0.9,1)
+rates = c(0.25,0.5,1)
+lmb = c(msx,1,0)
 
-# Fill layers
-Y0 = Y
-for(iter in 1:3){
+########################### FIRST ATTEMPT
+
+if(F){
   
-  cat('\n ITERATION',iter,'\n')
-  for(i in 1:HL1){
+  # Fill layers
+  Y0 = Y
+  for(iter in 1:3){
     
-    cat('.')
-    
-    # Fill H1
-    tmp = GD(Y0,Z,W1[,i],xx=xx,rate=rates[1],h2=H2[1])
-    W1[,i] = tmp$b
-    F1[,i] = tmp$g
-    I1[i] = tmp$mu
-    # plot(tmp$b)
-    # plot(tmp$g,Y0)
-    
-    # Fill H2
-    for(j in 1:HL2){
+    cat('\n ITERATION',iter,'\n')
+    for(i in 1:HL1){
       
-      tmp = GD(Y0,ActFun(F1),W2[,j],rate=rates[2],h2=H2[2])
-      W2[,j] = tmp$b
-      F2[,j] = tmp$g
-      I2[j] = tmp$mu
+      cat('.')
+      
+      # Fill H1
+      Y0 = Y0 + c(ActFun(ActFun(Z%*%W1[,i]+I1[i])%*%W2[i,]+I2[i])%*%W3) 
+      tmp = GD(Y0,Z,W1[,i],xx=xx,rate=rates[1],lmb=lmb[1])
+      W1[,i] = tmp$b
+      H1[,i] = tmp$g
+      I1[i] = tmp$mu
       # plot(tmp$b)
       # plot(tmp$g,Y0)
       
-      # Fill H3
-      tmp = GD(Y,ActFun(F2),rate=rates[3],h2=H2[3])
-      W3 = tmp$b
-      F3 = tmp$g
-      I3 = tmp$mu
-      # plot(tmp$b)
-      # plot(tmp$g,Y0)
+      # Fill H2
+      for(j in 1:HL2){
+        
+        Y00 = Y0 + c(ActFun(ActFun(Z%*%W1[,j]+I1[j])%*%W2[j,]+I2[j])%*%W3)-I3
+        tmp = GD(Y00,ActFun(H1),W2[,j],rate=rates[2],lmb=lmb[2])
+        W2[,j] = tmp$b
+        H2[,j] = ActFun(tmp$g)
+        I2[j] = tmp$mu
+        # plot(tmp$b)
+        # plot(tmp$g,Y0)
+        
+        # Fill H3
+        tmp = GD(Y,ActFun(H2),rate=rates[3],lmb=lmb[3])
+        W3 = tmp$b
+        F3 = ActFun(tmp$g)
+        I3 = tmp$mu
+        # plot(tmp$b)
+        # plot(tmp$g,Y0)
+        
+        # Update target
+        Y0 = Y - F3
+        
+      }
       
-      # Update target
-      Y0 = Y - F3
       
     }
+    cat('\n R',round(cor(F3,Y),2),'\n')
     
-    
+    cat('\n')
   }
-  cat('R2',round(cor(F3,Y),2),'\n')
   
-  cat('\n')
+  # Plot diagnostics
+  par(mfrow=c(2,1))
+  
+  # Check fitness
+  Hat = F3+I3
+  plot(Hat,Y,main='Propagated')
+  
+  # Double check fitting NN
+  hh = FN(FN(Z,W1,I1),W2,I2)%*%W3+I3
+  plot(hh,Y,main='Fitted')
+  
+  
 }
 
-# Plot diagnostics
-par(mfrow=c(2,1))
+########################### SECOND ATTEMPT
 
-# Check fitness
-Hat = F3+mu
-plot(Hat,Y,main='Propagated')
-
-# Double check fitting NN
-hh = FN(FN(Z,W1,I1),W2,I2)%*%W3+I3
-plot(hh,Y,main='Fitted')
-
+if(T){
+  
+  for(iter in 1:10){
+    cat('\n ITERATION',iter,'\n')
+    
+    # Backprop
+    Hat = c(FN(H2,W3,I3))
+    
+    # Layer 3
+    dH3 = Y-Hat
+    dW3 = t(H2)%*%dH3
+    dI3 = mean(dH3)
+    # Layer 2
+    dH2 = ActFun( dH3 %*% t(W3) )
+    dW2 = t(H1)%*%dH2
+    dI2 = mean(dH2)
+    # Layer 1
+    dH1 = ActFun( dH2 %*% t(W2) )
+    dW1 = t(Z)%*%dH1
+    dI1 = mean(dH1)
+    
+    # Add L2 penalty
+    dW3 = dW3 + lmb[3]*W3
+    dW2 = dW2 + lmb[2]*W2
+    dW1 = dW1 + lmb[1]*W1
+    
+    # Update parameter 
+    W3 = W3 - dW3*rates[3]
+    I3 = I3 - dI3*rates[3]
+    W2 = W2 - dW2*rates[2]
+    I2 = I2 - dI2*rates[2]
+    W1 = W1 - dW1*rates[1]
+    I1 = I1 - dI1*rates[1]
+    
+    # Check fitness
+    plot(Hat,Y,main='Fitted')
+    cat('\n R =',round(cor(Hat,Y),2),'\n')
+    
+  }
+  
+}
 
 
