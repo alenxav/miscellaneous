@@ -12,28 +12,12 @@ msx = mean(xx)
 n = nrow(Z)
 p = ncol(Z)
 
-# Gradient descent
-GD = function(y,Z,b=NULL,rate=0.1,lmb=0,xx=NULL){
-  if(is.null(xx)) xx = apply(Z,2,crossprod)
-  if(is.null(b)) b = rep(0,ncol(Z))
-  mu = mean(y)
-  e = y-mu
-  for(j in 1:ncol(Z)){
-    b0 = b[j]
-    b1 = (c(e%*%Z[,j])*rate+b0*xx[j])/(xx[j]+lmb+1e-8)
-    b1 = c(b1)
-    b[j] = b1
-    e = e - c(Z[,j])*(b1-b0)}
-  g = y-e-mu
-  out = list(b=b,g=g,mu=mu)
-}
-compiler::cmpfun(GD)
-
 # Activation function
 #ActFun = function(x){ 1/(1+exp(-x)) }  # Sigmoid
-#ActFun = function(x){ (exp(x)-exp(-x))/(exp(x)+exp(-x)) }  # Tanh
+#ActFun = tanh  # Tanh
 ActFun = function(x){ x[x<0]=0; return(x) }  # ReLU
-
+#ActFun = function(x){ x[x<0]=x[x<0]/100; return(x) }  # Leaky ReLU
+ActFun = function(x){ x }  # linear
 
 # Fit node
 FN = function(Z,W,I){
@@ -44,8 +28,8 @@ FN = function(Z,W,I){
 }
 
 # Number of nodes in hidden layer
-HL1 = 8
-HL2 = 4
+HL1 = 50
+HL2 = 20
 
 # Intercepts (I), Weights (W) and Fits (F)
 I1 = rnorm(HL1,sd=0.1)
@@ -140,7 +124,7 @@ par(mfrow=c(2,2))
 
 if(T){
   
-  for(iter in 1:12){
+  for(iter in 1:8){
     cat('\n ITERATION',iter,'\n')
     
     # Fit model
