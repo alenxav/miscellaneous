@@ -10,7 +10,6 @@ if(!exists('Y')){
 
 # Gauss-Seidel Gradients
 gsg = function(Y,X,xx=NULL,h2=1){
-  X = CNT(X)
   if(is.null(xx)) xx = apply(X,2,crossprod)+1e-8
   lmb = mean(xx)*(1-h2)/h2
   gs = function(Y) NAM::NOR(Y,X,lmb,xx,5)$b
@@ -65,7 +64,6 @@ h2 = c(0.25,0.5,1)
 
 ########################### FORTH ATTEMPT
 
-
 Number_of_iterations = 10
 
 # RUN DNN
@@ -109,4 +107,6 @@ for(iter in 1:Number_of_iterations){
   
 }
 
+###########################
 
+plot(rowMeans(W1*W1),ylab=expression(omega^2),xlab='SNP',main='Importance')
