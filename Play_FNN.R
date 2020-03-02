@@ -43,13 +43,13 @@ nrm = function(X) apply(X,2,function(x) x/sqrt(c(crossprod(x))))
 
 # Intercepts (I), Weights (W) and Fits (F)
 I1 = rnorm(HL1)
-W1 = nrm(matrix(runif(p*HL1),p,HL1))
+W1 = nrm(matrix(rnorm(p*HL1,sd=2/sqrt(p)),p,HL1))
 H1 = FN(Z,W1,I1)
 I2 = rnorm(HL2)
-W2 = nrm(matrix(runif(HL1*HL2),HL1,HL2))
+W2 = nrm(matrix(rnorm(HL1*HL2,sd=2/sqrt(HL1)),HL1,HL2))
 H2 = FN(H1,W2,I2)
 I3 = mean(Y)
-W3 = rnorm(HL2)
+W3 = rnorm(HL2,sd=2/sqrt(HL2))
 H3 = c(FN(H2,W3,I3,AF=F))
 
 # Check starting point
