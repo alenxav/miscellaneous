@@ -1,12 +1,13 @@
 if(!exists('Y')){
   require(NAM)
-  tmp = SoyNAM::BLUP(family=1:15)
+  tmp = SoyNAM::BLUP(family=1:12)
+  fam = tmp$Fam
   # Train
-  Y = tmp$Phen[tmp$Fam<=8]
-  Z = CNT(tmp$Gen[tmp$Fam<=8,])
+  Y = tmp$Phen[fam<=8]
+  Z = CNT(tmp$Gen[fam<=8,])
   # Test
-  Y2 = tmp$Phen[tmp$Fam>8]
-  Z2 = CNT(tmp$Gen[tmp$Fam>8,])
+  Y2 = tmp$Phen[fam>8]
+  Z2 = CNT(tmp$Gen[fam>8,])
   rm(tmp)
   xx = apply(Z,2,crossprod)
   msx = mean(xx)
@@ -27,8 +28,8 @@ p = ncol(Z)
 #ActFun = function(x){ x }  # linear
 #ActFun = function(x){ 1/(1+exp(-x)) }  # Sigmoid
 #ActFun = tanh  # Tanh
-#ActFun = function(x){ x[x<0]=0; return(x) }  # ReLU
-ActFun = function(x){ x[x<0]=x[x<0]/100; return(x) }  # Leaky ReLU
+ActFun = function(x){ x[x<0]=0; return(x) }  # ReLU
+#ActFun = function(x){ x[x<0]=x[x<0]/100; return(x) }  # Leaky ReLU
 
 # Fit node
 FN = function(Z,W,I,AF=TRUE){
@@ -39,11 +40,14 @@ FN = function(Z,W,I,AF=TRUE){
 }
 
 # Number of nodes in hidden layer
-HL1 = 50
+HL1 = 40
 HL2 = 20
 
 # Some normalization function
 nrm = function(X) apply(X,2,function(x) x/sqrt(c(crossprod(x))))
+
+# Set seed
+set.seed(12345)
 
 # Intercepts (I), Weights (W) and Fits (F)
 I1 = rnorm(HL1)
@@ -54,34 +58,44 @@ W2 = nrm(matrix(rnorm(HL1*HL2,sd=2/sqrt(HL1)),HL1,HL2))
 H2 = FN(H1,W2,I2)
 I3 = mean(Y)
 W3 = rnorm(HL2,sd=2/sqrt(HL2))
-H3 = c(FN(H2,W3,I3,AF=F))
+H3 = c(FN(H2,W3,I3))
 
 # Check starting point
 CHECK = function(a='check'){
-  Hat = c(FN(FN(FN(Z,W1,I1),W2,I2),W3,I3,FALSE))
+  Hat = c(FN(FN(FN(Z,W1,I1),W2,I2),W3,I3,AF=FALSE))
   plot(Hat,Y,main=paste("COR =",round(cor(Hat,Y),4),a))}
 CHECK()
 
-###########################
-
-# Learning rate, L2 penalization and epochs
-rate = 0.01
-h2 = 0.5
-epochs = 20
-
-# Fitness and Prediction
+# Store fitness and prediction
 GOF = PA = 0
 
 ###########################
 
-# RUN DNN
+# Learning rate, L2 penalization and epochs
+rate = 0.02
+h2 = 0.5
+epochs = 20
 
+###########################
+
+# Dinamics of learning rate
+update_rate = TRUE
+rate_update_factor = 1.15
+max_rate = 0.5
+perturb_y = 0.1
+
+###########################
+
+# RUN DNN
 for(iter in 1:epochs){
   cat('ITERATION',iter,'\n')
   
+  # Add some noise
+  Ytmp = Y + rnorm(n,sd=sd(Y)*perturb_y)
+  
   # Layer 1 backprop
-  Hat = c(FN(FN(FN(Z,W1,I1),W2,I2),W3,I3,F))
-  dH3 = matrix(Y-Hat)
+  Hat = c(FN(FN(FN(Z,W1,I1),W2,I2),W3,I3,AF=FALSE))
+  dH3 = matrix(Ytmp-Hat)
   dH2 = ActFun(dH3%*%t(W3))
   dH1 = ActFun(dH2%*%t(W2))
   dW1 = gsg(dH1,Z,xx,h2=h2)
@@ -91,8 +105,8 @@ for(iter in 1:epochs){
   CHECK(' Layer 1')
   
   # Layer 2 backprop
-  Hat = c(FN(FN(FN(Z,W1,I1),W2,I2),W3,I3,F))
-  dH3 = matrix(Y-Hat)
+  Hat = c(FN(FN(FN(Z,W1,I1),W2,I2),W3,I3,AF=FALSE))
+  dH3 = matrix(Ytmp-Hat)
   dH2 = ActFun( dH3 %*% t(W3) )
   dW2 = gsg(dH2,H1,h2=h2)
   dI2 = colMeans(dH2)
@@ -101,8 +115,8 @@ for(iter in 1:epochs){
   CHECK(' Layer 2')
   
   # Layer 3 backprop
-  Hat = c(FN(FN(FN(Z,W1,I1),W2,I2),W3,I3,F))
-  dH3 = matrix(Y-Hat)
+  Hat = c(FN(FN(FN(Z,W1,I1),W2,I2),W3,I3,AF=FALSE))
+  dH3 = matrix(Ytmp-Hat)
   dW3 = gsg(dH3,H2,h2=h2)
   dI3 = mean(dH3)
   W3 = W3 + c(dW3)*rate
@@ -110,31 +124,33 @@ for(iter in 1:epochs){
   CHECK(' Layer 3')
   
   # Update rate
-  rate = min(0.5,rate*1.15)
+  if(update_rate) rate = min(max_rate,rate*rate_update_factor)
   
   # Store PA
-  GOF[iter] = cor(Y,c(FN(FN(FN(Z,W1,I1),W2,I2),W3,I3,FALSE)))
-  PA[iter] = cor(Y2,c(FN(FN(FN(Z2,W1,I1),W2,I2),W3,I3,FALSE)))
-  cat('GOF/PA',round( c(GOF[iter],PA[iter]) ,4),'\n')
+  GOF[iter] = cor(Y,c(FN(FN(FN(Z,W1,I1),W2,I2),W3,I3,AF=FALSE)))
+  PA[iter] = cor(Y2,c(FN(FN(FN(Z2,W1,I1),W2,I2),W3,I3,AF=FALSE)))
+  cat('Rate',round(rate,4),'GOF/PA',round( c(GOF[iter],PA[iter]) ,4),'\n')
   
-  }
+  # Convergence
+  if(iter>10){  if((GOF[iter]-GOF[iter-1])<0.01) stop() }
+  
+}
 
 ###########################
 
 # Compute a baseline
-if(!exists('parr')){
-  rr = emML(Y,Z); parr = cor(Y2,Z2%*%rr$b); parr
-  bb = emBB(Y,Z); pabb = cor(Y2,Z2%*%bb$b); pabb
-}
+rr = emML(Y,Z); parr = cor(Y2,Z2%*%rr$b); parr
+bb = emBB(Y,Z); pabb = cor(Y2,Z2%*%bb$b); pabb
 
 # Checks prediction by epoch
+par(mar=c(4,4,2,2))
 plot(GOF,xlab='Iteration',type='l',main='Check performance of deep neural net',
      ylab='Correlation',lwd=3,ylim=c(0,1))
 # Add baseline
-lines(c(0,4),c(parr,parr),col=3,lwd=3)
-lines(c(0,4),c(pabb,pabb),col=4,lwd=3)
+lines(c(iter-2,iter),c(parr,parr),col=3,lwd=3)
+lines(c(iter-2,iter),c(pabb,pabb),col=4,lwd=3)
 lines(PA,col=2,lwd=3)
 # Legend
-legend('topleft',
+legend('topleft',ncol=2,
        c('DNN fitness','DNN prediction','GBLUP prediction','BayesB prediction'),
        col=1:4,pch=20,bty='n')
