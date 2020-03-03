@@ -1,12 +1,12 @@
 if(!exists('Y')){
   require(NAM)
-  tmp = SoyNAM::BLUP(family=1:10)
+  tmp = SoyNAM::BLUP(family=1:15)
   # Train
-  Y = tmp$Phen[tmp$Fam<=5]
-  Z = CNT(tmp$Gen[tmp$Fam<=5,])
+  Y = tmp$Phen[tmp$Fam<=8]
+  Z = CNT(tmp$Gen[tmp$Fam<=8,])
   # Test
-  Y2 = tmp$Phen[tmp$Fam>5]
-  Z2 = CNT(tmp$Gen[tmp$Fam>5,])
+  Y2 = tmp$Phen[tmp$Fam>8]
+  Z2 = CNT(tmp$Gen[tmp$Fam>8,])
   rm(tmp)
   xx = apply(Z,2,crossprod)
   msx = mean(xx)
@@ -64,10 +64,10 @@ CHECK()
 
 ###########################
 
-# Learning rate, L2 penalization and iterations (epochs)
+# Learning rate, L2 penalization and epochs
 rate = 0.01
 h2 = 0.5
-Number_of_iterations = 20
+epochs = 20
 
 # Fitness and Prediction
 GOF = PA = 0
@@ -76,45 +76,41 @@ GOF = PA = 0
 
 # RUN DNN
 
-for(iter in 1:Number_of_iterations){
+for(iter in 1:epochs){
   cat('ITERATION',iter,'\n')
   
-  # Mini-batch size - default is full batch
-  BatchSize = 1
-  mb = sort(sample(1:n,n*BatchSize)) 
-  
   # Layer 1 backprop
-  Hat = c(FN(FN(FN(Z[mb,],W1,I1),W2,I2),W3,I3,F))
-  dH3 = matrix(Y[mb]-Hat)
-  dH2 = ActFun( dH3 %*% t(W3) )
-  dH1 = ActFun( dH2 %*% t(W2) )
-  dW1 = gsg(dH1,Z[mb,],xx,h2=h2)
+  Hat = c(FN(FN(FN(Z,W1,I1),W2,I2),W3,I3,F))
+  dH3 = matrix(Y-Hat)
+  dH2 = ActFun(dH3%*%t(W3))
+  dH1 = ActFun(dH2%*%t(W2))
+  dW1 = gsg(dH1,Z,xx,h2=h2)
   dI1 = colMeans(dH1)
   W1 = W1 + dW1*rate
   I1 = I1 + dI1*rate
   CHECK(' Layer 1')
   
   # Layer 2 backprop
-  Hat = c(FN(FN(FN(Z[mb,],W1,I1),W2,I2),W3,I3,F))
-  dH3 = matrix(Y[mb]-Hat)
+  Hat = c(FN(FN(FN(Z,W1,I1),W2,I2),W3,I3,F))
+  dH3 = matrix(Y-Hat)
   dH2 = ActFun( dH3 %*% t(W3) )
   dW2 = gsg(dH2,H1,h2=h2)
   dI2 = colMeans(dH2)
   W2 = W2 + dW2*rate
-  I2 = I2 - dI2*rate
+  I2 = I2 + dI2*rate
   CHECK(' Layer 2')
   
   # Layer 3 backprop
-  Hat = c(FN(FN(FN(Z[mb,],W1,I1),W2,I2),W3,I3,F))
-  dH3 = matrix(Y[mb]-Hat)
+  Hat = c(FN(FN(FN(Z,W1,I1),W2,I2),W3,I3,F))
+  dH3 = matrix(Y-Hat)
   dW3 = gsg(dH3,H2,h2=h2)
   dI3 = mean(dH3)
   W3 = W3 + c(dW3)*rate
-  I3 = I3 - dI3*rate
+  I3 = I3 + dI3*rate
   CHECK(' Layer 3')
   
   # Update rate
-  rate = min(1,rate*1.15)
+  rate = min(0.5,rate*1.15)
   
   # Store PA
   GOF[iter] = cor(Y,c(FN(FN(FN(Z,W1,I1),W2,I2),W3,I3,FALSE)))
@@ -125,9 +121,11 @@ for(iter in 1:Number_of_iterations){
 
 ###########################
 
-# Make a baseline
-rr = emML(Y,Z); parr = cor(Y2,Z2%*%rr$b)
-bb = emBB(Y,Z); pabb = cor(Y2,Z2%*%bb$b)
+# Compute a baseline
+if(!exists('parr')){
+  rr = emML(Y,Z); parr = cor(Y2,Z2%*%rr$b); parr
+  bb = emBB(Y,Z); pabb = cor(Y2,Z2%*%bb$b); pabb
+}
 
 # Checks prediction by epoch
 plot(GOF,xlab='Iteration',type='l',main='Check performance of deep neural net',
@@ -137,4 +135,6 @@ lines(c(0,4),c(parr,parr),col=3,lwd=3)
 lines(c(0,4),c(pabb,pabb),col=4,lwd=3)
 lines(PA,col=2,lwd=3)
 # Legend
-legend('topleft',c('Fitness','DNN','GBLUP','BayesB'),col=1:4,pch=20)
+legend('topleft',
+       c('DNN fitness','DNN prediction','GBLUP prediction','BayesB prediction'),
+       col=1:4,pch=20,bty='n')
