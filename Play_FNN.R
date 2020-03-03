@@ -74,7 +74,7 @@ GOF = PA = 0
 # Learning rate, L2 penalization and epochs
 rate = 0.02
 h2 = 0.5
-epochs = 20
+epochs = 15
 
 ###########################
 
@@ -131,16 +131,14 @@ for(iter in 1:epochs){
   PA[iter] = cor(Y2,c(FN(FN(FN(Z2,W1,I1),W2,I2),W3,I3,AF=FALSE)))
   cat('Rate',round(rate,4),'GOF/PA',round( c(GOF[iter],PA[iter]) ,4),'\n')
   
-  # Convergence
-  if(iter>10){  if((GOF[iter]-GOF[iter-1])<0.01) stop() }
-  
 }
 
 ###########################
 
 # Compute a baseline
-rr = emML(Y,Z); parr = cor(Y2,Z2%*%rr$b); parr
-bb = emBB(Y,Z); pabb = cor(Y2,Z2%*%bb$b); pabb
+rr = emML(Y,Z); rrhat=Z2%*%rr$b; parr = cor(Y2,rrhat); parr
+bb = emBB(Y,Z); bbhat=Z2%*%bb$b; pabb = cor(Y2,bbhat); pabb
+nnhat = c(FN(FN(FN(Z2,W1,I1),W2,I2),W3,I3,AF=FALSE))
 
 # Checks prediction by epoch
 par(mar=c(4,4,2,2))
@@ -154,3 +152,9 @@ lines(PA,col=2,lwd=3)
 legend('topleft',ncol=2,
        c('DNN fitness','DNN prediction','GBLUP prediction','BayesB prediction'),
        col=1:4,pch=20,bty='n')
+
+# Within-family predictive ability
+Q = data.frame(rrhat,bbhat,nnhat,y=Y2,fam=fam[fam>8])
+Q =  by(data = Q,INDICES = Q[,5],FUN = function(q) cor(q[,1:4])[1:3,4] )
+Q = sapply(Q, c)
+Q
