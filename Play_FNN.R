@@ -1,8 +1,12 @@
 if(!exists('Y')){
   require(NAM)
-  tmp = SoyNAM::BLUP(family=1:5)
-  Y = tmp$Phen
-  Z = CNT(tmp$Gen)
+  tmp = SoyNAM::BLUP(family=1:10)
+  # Train
+  Y = tmp$Phen[tmp$Fam<=5]
+  Z = CNT(tmp$Gen[tmp$Fam<=5,])
+  # Test
+  Y2 = tmp$Phen[tmp$Fam>5]
+  Z2 = CNT(tmp$Gen[tmp$Fam>5,])
   rm(tmp)
   xx = apply(Z,2,crossprod)
   msx = mean(xx)
@@ -58,13 +62,17 @@ CHECK = function(a='check'){
   plot(Hat,Y,main=paste("COR =",round(cor(Hat,Y),4),a))}
 CHECK()
 
-# Learning rate and L2 penalization
-rates = c(0.05,0.05,0.1)
-h2 = c(0.25,0.5,1)
+###########################
 
-########################### FORTH ATTEMPT
+# Learning rate, L2 penalization and iterations (epochs)
+rate = 0.01
+h2 = 0.5
+Number_of_iterations = 20
 
-Number_of_iterations = 10
+# Fitness and Prediction
+GOF = PA = 0
+
+###########################
 
 # RUN DNN
 
@@ -80,33 +88,53 @@ for(iter in 1:Number_of_iterations){
   dH3 = matrix(Y[mb]-Hat)
   dH2 = ActFun( dH3 %*% t(W3) )
   dH1 = ActFun( dH2 %*% t(W2) )
-  dW1 = gsg(dH1,Z[mb,],xx,h2=h2[1])
+  dW1 = gsg(dH1,Z[mb,],xx,h2=h2)
   dI1 = colMeans(dH1)
-  W1 = W1 + dW1*rates[1]
-  I1 = I1 + dI1*rates[1]
+  W1 = W1 + dW1*rate
+  I1 = I1 + dI1*rate
   CHECK(' Layer 1')
   
   # Layer 2 backprop
   Hat = c(FN(FN(FN(Z[mb,],W1,I1),W2,I2),W3,I3,F))
   dH3 = matrix(Y[mb]-Hat)
   dH2 = ActFun( dH3 %*% t(W3) )
-  dW2 = gsg(dH2,H1,h2=h2[2])
+  dW2 = gsg(dH2,H1,h2=h2)
   dI2 = colMeans(dH2)
-  W2 = W2 + dW2*rates[2]
-  I2 = I2 - dI2*rates[2]
+  W2 = W2 + dW2*rate
+  I2 = I2 - dI2*rate
   CHECK(' Layer 2')
   
   # Layer 3 backprop
   Hat = c(FN(FN(FN(Z[mb,],W1,I1),W2,I2),W3,I3,F))
   dH3 = matrix(Y[mb]-Hat)
-  dW3 = gsg(dH3,H2,h2=h2[3])
+  dW3 = gsg(dH3,H2,h2=h2)
   dI3 = mean(dH3)
-  W3 = W3 + c(dW3)*rates[2]
-  I3 = I3 - dI3*rates[3]
+  W3 = W3 + c(dW3)*rate
+  I3 = I3 - dI3*rate
   CHECK(' Layer 3')
   
-}
+  # Update rate
+  rate = min(1,rate*1.15)
+  
+  # Store PA
+  GOF[iter] = cor(Y,c(FN(FN(FN(Z,W1,I1),W2,I2),W3,I3,FALSE)))
+  PA[iter] = cor(Y2,c(FN(FN(FN(Z2,W1,I1),W2,I2),W3,I3,FALSE)))
+  cat('GOF/PA',round( c(GOF[iter],PA[iter]) ,4),'\n')
+  
+  }
 
 ###########################
 
-plot(rowMeans(W1*W1),ylab=expression(omega^2),xlab='SNP',main='Importance')
+# Make a baseline
+rr = emML(Y,Z); parr = cor(Y2,Z2%*%rr$b)
+bb = emBB(Y,Z); pabb = cor(Y2,Z2%*%bb$b)
+
+# Checks prediction by epoch
+plot(GOF,xlab='Iteration',type='l',main='Check performance of deep neural net',
+     ylab='Correlation',lwd=3,ylim=c(0,1))
+# Add baseline
+lines(c(0,4),c(parr,parr),col=3,lwd=3)
+lines(c(0,4),c(pabb,pabb),col=4,lwd=3)
+lines(PA,col=2,lwd=3)
+# Legend
+legend('topleft',c('Fitness','DNN','GBLUP','BayesB'),col=1:4,pch=20)
