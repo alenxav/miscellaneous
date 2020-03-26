@@ -202,7 +202,6 @@ SEXP FNN(MatrixXd Y, // Phenotype
     
   }
   
-  H3 = FitDNN(X,W1,W2,W3,I1,I2,I3);
   // Return list with weights and intercepts
   return Rcpp::List::create(Rcpp::Named("H1")=H1,
                             Rcpp::Named("H2")=H2,
