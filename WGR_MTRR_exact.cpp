@@ -58,7 +58,7 @@ SEXP mrrExact(NumericMatrix Y, NumericMatrix X,int maxit = 200,double tol = 10e-
         e(_,i) = (e(_,i)-X(_,j)*(b1(i)-b0(i)))*o(_,i);}
     }
     // Residual variance components update
-    for(int i=0; i<k; i++){ ve(i) = (sum(e(_,i)*y(_,i)))/n(i);}
+    for(int i=0; i<k; i++){ ve(i) = (sum(e(_,i)*y(_,i)))/(n(i)+1);}
     // Genetic covariance components update
     // Update Gammas
     for(int i=0; i<k; i++){
@@ -70,6 +70,7 @@ SEXP mrrExact(NumericMatrix Y, NumericMatrix X,int maxit = 200,double tol = 10e-
         GammaBeta(i,j) = sum(Gamma(_,j)*b(_,i));}}
     // Update VarG
     for(int i=0; i<k; i++){for(int j=0; j<k; j++){vb(i,j) = (GammaBeta(j,i)+GammaBeta(i,j))/(GammaGamma(i)+GammaGamma(j));}}
+    for(int i=0; i<k; i++){ vb(i,i)=vb(i,i)*1.00001; }
     iG = solve(vb);
     // Convergence
     ++numit;
