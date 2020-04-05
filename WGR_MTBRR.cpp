@@ -63,7 +63,7 @@ SEXP MRR(NumericMatrix Y, NumericMatrix X,
     rho(i,i) = 1.0;}
   
   // Get priors
-  NumericVector Sb = (R2)*df*vy/MSx;
+  NumericVector Sb = (R2)*(df+k)*vy/MSx;
   NumericVector Se = (1-R2)*df*vy;
   
   // Store Posterior
