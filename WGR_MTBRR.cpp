@@ -188,6 +188,5 @@ SEXP MRR(NumericMatrix Y, NumericMatrix X,
                       Named("hat")=fit,
                       Named("h2")=h2,
                       Named("GC")=GC,
-                      Named("Vbb")=vb,
                       Named("Vb")=VB,
                       Named("Ve")=VE);}
