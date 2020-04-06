@@ -81,7 +81,7 @@ SEXP MRR(NumericMatrix Y, NumericMatrix X,
   for(int numit=0; numit<it; numit++){    
     
     // Print iteration
-    if ((numit % 100 == 0)&(numit>0)){
+    if ((numit+1) % 100 == 0){
       cout << "Iteration: " << numit << "\n";}
     
     // Gauss-Seidel loop
