@@ -4,13 +4,12 @@ using std::cout;
 #include <RcppArmadillo.h>
 // [[Rcpp::depends(RcppArmadillo)]]
 using arma::pinv;
+using arma::inv;
+using arma::wishrnd;
+using arma::mat;
 
 #include <Rcpp.h>
 using namespace Rcpp;
-
-#include <RcppDist.h>
-// [[Rcpp::depends(RcppDist)]]
-#include <wishart.h>
 
 // [[Rcpp::export]]
 SEXP MRR(NumericMatrix Y, NumericMatrix X,
@@ -141,7 +140,7 @@ SEXP MRR(NumericMatrix Y, NumericMatrix X,
     // Genetic covariance
     SS = as<arma::mat>(SSb);
     invSS = pinv(SS,0.000001);
-    vb = wrap(riwish(df+k+p,invSS));
+    vb = wrap( inv(wishrnd(invSS,df+k+p)));
     iG = solve(vb);
     
     // Store posterior sums
