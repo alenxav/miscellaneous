@@ -1,11 +1,22 @@
 #include <iostream>
 using std::cout;
+
+#include <RcppArmadillo.h>
+// [[Rcpp::depends(RcppArmadillo)]]
+using arma::pinv;
+using arma::inv_sympd;
+using arma::mat;
+using arma::vec;
+using arma::wishrnd;
+
 #include <Rcpp.h>
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-SEXP MRR(NumericMatrix Y, NumericMatrix X,
-         int it = 1500, int bi = 500){
+SEXP MBRR(NumericMatrix Y,
+          NumericMatrix X,
+          int it = 1500, int bi = 500,
+          int df = 4, double R2 = 0.5){
   
   // Obtain environment containing function
   Rcpp::Environment base("package:base");
@@ -30,7 +41,6 @@ SEXP MRR(NumericMatrix Y, NumericMatrix X,
     y(_,j) = (y(_,j)-mu(j))*o(_,j);  }  
   
   // Marker variance
-  NumericMatrix GC(k,k);
   NumericMatrix xx(p,k), vx(p,k);
   double tmp;
   for(int i=0; i<p; i++){
@@ -38,8 +48,8 @@ SEXP MRR(NumericMatrix Y, NumericMatrix X,
       xx(i,j) = sum(X(_,i)*X(_,i)*o(_,j));
       tmp = sum(X(_,i)*o(_,j))/n(j);
       vx(i,j) = xx(i,j)/n(j)-tmp*tmp;}}
-  NumericVector MSx = colSums(vx);  
-
+  NumericVector MSx = colSums(vx);
+  
   // Beta, intercept and residuals
   NumericMatrix b(p,k),vb(k,k),rho(k,k);
   NumericVector b0(k),vy(k),ve(k);
@@ -53,18 +63,32 @@ SEXP MRR(NumericMatrix Y, NumericMatrix X,
     vb(i,i) = ve(i)/MSx(i);
     rho(i,i) = 1.0;}
   
+  // Get priors
+  int DFb = df+k+n0;
+  NumericVector Sb = (R2)*(df+k)*vy;
+  NumericVector Se = (1-R2)*df*vy;
+  mat Su = diagmat(as<vec>(Sb));
+  mat Z = as<mat>(X); mat a; 
+  
   // Store Posterior
   NumericMatrix iG(k,k); iG = solve(vb);
-  NumericMatrix B(p,k),VB(k,k);
-  NumericVector VE(k);
+  NumericMatrix B(p,k),VB(k,k), SSb(k,k);
+  NumericVector MU(k),VE(k);
   int mcmc;
+  
+  // Objects for Inverse G
+  mat SS;
+  mat invG;
+  mat invSS;
+  mat u;
   
   // Loop
   for(int numit=0; numit<it; numit++){    
     
     // Print iteration
     if ((numit+1) % 100 == 0){
-      cout << "Iteration: " << numit+1 << "\n";}
+      cout << "Iteration: " << numit+1 << "\n";
+    }
     
     // Gauss-Seidel loop
     for(int j=0; j<p; j++){      
@@ -78,8 +102,7 @@ SEXP MRR(NumericMatrix Y, NumericMatrix X,
         // Compute coefficient covariances among traits
         covs = 0.0;
         for(int ii=0; ii<k; ii++){
-          if(i!=ii){
-            covs = covs+iG(i,ii)*b0(ii);
+          if(i!=ii){ covs = covs+iG(i,ii)*b0(ii);
           }
         }
         
@@ -98,25 +121,35 @@ SEXP MRR(NumericMatrix Y, NumericMatrix X,
         // Update residuals
         e(_,i) = (e(_,i)-X(_,j)*(b1-b0(i)))*o(_,i);}}   
     
+    // Intercept
+    for(int i=0; i<k; i++){
+      tmp = mu(i);
+      rhs = sum(e(_,i)*o(_,i));
+      b1 = R::rnorm(rhs/n(i),sqrt(ve(i)/n(i)));
+      mu(i) = b1;
+      e(_,i) = (e(_,i)-(b1-tmp))*o(_,i);
+    }
+    
     // Residual variance components update
     for(int i=0; i<k; i++){
-      ve(i) = sum(e(_,i)*e(_,i))/R::rchisq(n(i)-2);}
+      ve(i) = (sum(e(_,i)*e(_,i))+Se(i))/R::rchisq(n(i)+df);
+    }
     
-    // Get fitted values
-    for(int i=0; i<n0; i++){for(int j=0; j<k; j++){fit(i,j) = sum(X(i,_)*b(_,j));}}      
+    // Genetic sum of squares
+    a = as<mat>(b);
+    u = Z*a;
     
-    // GC correlations
-    for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
-        GC(i,j)= sum(fit(_,i)*fit(_,j))/sqrt( sum(fit(_,i)*fit(_,i)) * sum(fit(_,j)*fit(_,j))  );
+    // Genetic covariance
+    SS = u.t()*u+Su;
+    invSS = inv(SS);
+    vb = wrap( inv(wishrnd(invSS,DFb)) );
+    // Rescale in B
+    for(int i=0; i<k; i++){
+      for(int j=0; j<k; j++){
+      vb(i,j) = vb(i,j)/sqrt(MSx(i)*MSx(j));
       }
     }
     
-    // Genetic variance
-    for(int i=0; i<k; i++){ vb(i,i) = sum(b(_,i)*b(_,i))/R::rchisq(p-2);}
-    for(int i=0; i<k; i++){ for(int j=0; j<k; j++){ if(i!=j){ vb(i,j) = GC(i,j)*sqrt(vb(i,i)*vb(j,j));}}}
-    
-    // Ridging diagonal and inverse variance
-    for(int i=0; i<k; i++){ vb(i,i) = vb(i,i)*1.1; }
     iG = solve(vb);
     
     // Store posterior sums
@@ -125,6 +158,7 @@ SEXP MRR(NumericMatrix Y, NumericMatrix X,
         VB(_,i)=VB(_,i)+vb(_,i);
         B(_,i)=B(_,i)+b(_,i);}
       VE=VE+ve;
+      MU=MU+mu;
       mcmc=mcmc+1;
     }
     
@@ -135,12 +169,14 @@ SEXP MRR(NumericMatrix Y, NumericMatrix X,
   VB = VB/mcmc;
   VE = VE/mcmc;
   B = B/mcmc;
+  MU = MU/mcmc;
   
   // Fitting the model
   for(int i=0; i<n0; i++){
     for(int j=0; j<k; j++){
-      fit(i,j) = sum(X(i,_)*b(_,j))+mu(j);
-    }}
+      fit(i,j) = sum(X(i,_)*B(_,j))+MU(j);
+    }
+  }
   
   // Heritability
   NumericVector h2(k); 
@@ -149,14 +185,16 @@ SEXP MRR(NumericMatrix Y, NumericMatrix X,
   }
   
   // Genetic correlations
+  NumericMatrix GC(k,k);
   for(int i=0; i<k; i++){
     for(int j=0; j<k; j++){
       GC(i,j)=VB(i,j)/(sqrt(VB(i,i)*VB(j,j)));
-    }}  
+    }
+  }  
   
   // Output
-  return List::create(Named("mu")=mu,
-                      Named("b")=b,
+  return List::create(Named("mu")=MU,
+                      Named("b")=B,
                       Named("hat")=fit,
                       Named("h2")=h2,
                       Named("GC")=GC,
