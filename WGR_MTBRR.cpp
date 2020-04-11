@@ -8,13 +8,13 @@ using arma::inv_sympd;
 using arma::mat;
 using arma::vec;
 using arma::wishrnd;
+using arma::mvnrnd;
 
 #include <Rcpp.h>
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-SEXP MBRR(NumericMatrix Y,
-          NumericMatrix X,
+SEXP MTBRR(NumericMatrix Y, NumericMatrix X,
           int it = 1500, int bi = 500,
           int df = 4, double R2 = 0.5){
   
@@ -139,6 +139,11 @@ SEXP MBRR(NumericMatrix Y,
     a = as<mat>(b);
     u = Z*a;
     
+    // Sample U
+    for(int i=0; i<n0; i++){
+      u.row(i) = mvnrnd(u.row(i).t(),as<mat>(vb)).t();
+    }
+    
     // Genetic covariance
     SS = u.t()*u+Su;
     invSS = inv(SS);
@@ -146,7 +151,7 @@ SEXP MBRR(NumericMatrix Y,
     // Rescale in B
     for(int i=0; i<k; i++){
       for(int j=0; j<k; j++){
-      vb(i,j) = vb(i,j)/sqrt(MSx(i)*MSx(j));
+        vb(i,j) = vb(i,j)/sqrt(MSx(i)*MSx(j));
       }
     }
     
