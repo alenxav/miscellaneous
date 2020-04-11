@@ -125,7 +125,7 @@ SEXP MTBRR(NumericMatrix Y, NumericMatrix X,
     for(int i=0; i<k; i++){
       tmp = mu(i);
       rhs = sum(e(_,i)*o(_,i));
-      b1 = R::rnorm(rhs/n(i),sqrt(ve(i)/n(i)));
+      b1 = R::rnorm(tmp+rhs/n(i),sqrt(ve(i)/n(i)));
       mu(i) = b1;
       e(_,i) = (e(_,i)-(b1-tmp))*o(_,i);
     }
