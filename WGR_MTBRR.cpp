@@ -128,9 +128,9 @@ SEXP MVBRR(NumericMatrix Y,
     
     // Genetic sum of squares
     a = as<mat>(b);
+    SS = a.t()*a+Sb;
     
     // Genetic covariance
-    SS = a.t()*a+Sb;
     vb = wrap(inv(wishrnd(inv(SS),df+p)));
     iG = solve(vb);
     
