@@ -14,8 +14,7 @@ using arma::mvnrnd;
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-SEXP MVBRR(NumericMatrix Y,
-          NumericMatrix X,
+SEXP MVBRR(NumericMatrix Y, NumericMatrix X,
           int it = 1500, int bi = 500,
           int df = 4, double R2 = 0.5){
   
@@ -54,11 +53,7 @@ SEXP MVBRR(NumericMatrix Y,
   // Beta, intercept and residuals
   NumericMatrix b(p,k),vb(k,k),rho(k,k);
   NumericVector b0(k),vy(k),ve(k);
-  double rhs, m0;
-  NumericMatrix LHS(k,k);
-  NumericVector b1(k),b2(k),RHS(k);
-  mat SS;
-  
+  double b1,lhs,rhs,covs,lambda;
   for(int i=0; i<k; i++){
     for(int j=0; j<k; j++){vb(i,j) = 0.0;}}
   for(int i=0; i<k; i++){
@@ -69,17 +64,23 @@ SEXP MVBRR(NumericMatrix Y,
     rho(i,i) = 1.0;}
   
   // Get priors
-  NumericMatrix Sb0(k,k);
-  for(int i=0; i<k; i++){Sb0(i,i) = (R2)*(df+p)*vy(i)/MSx(i);}
-  mat Sb = as<mat>(Sb0);
+  int DFb = df+k+n0;
+  NumericVector Sb = (R2)*(df+k)*vy;
   NumericVector Se = (1-R2)*df*vy;
-  mat a;
+  mat Su = diagmat(as<vec>(Sb));
+  mat Z = as<mat>(X); mat a; 
   
   // Store Posterior
   NumericMatrix iG(k,k); iG = solve(vb);
   NumericMatrix B(p,k),VB(k,k), SSb(k,k);
   NumericVector MU(k),VE(k);
   int mcmc;
+  
+  // Objects for Inverse G
+  mat SS;
+  mat invG;
+  mat invSS;
+  mat u;
   
   // Loop
   for(int numit=0; numit<it; numit++){    
@@ -89,36 +90,44 @@ SEXP MVBRR(NumericMatrix Y,
       cout << "Iteration: " << numit+1 << "\n";
     }
     
-    // Coefficient sampler
-    for(int j=0; j<p; j++){
+    // Gauss-Seidel loop
+    for(int j=0; j<p; j++){      
       
-      // Current value
-      b0 = b(j,_);
+      // Current marker effect
+      b0 = b(j,_);      
       
-      // Get expectation
-      LHS = iG+0;
-      for(int i=0; i<k; i++){
-        LHS(i,i) = iG(i,i)+(xx(j,i)/ve(i));
-        RHS(i) = (sum(e(_,i)*X(_,j))+xx(j,i)*b0(i))/ve(i);
+      // Update coefficient one trait at a time
+      for(int i=0; i<k; i++){        
+        
+        // Compute coefficient covariances among traits
+        covs = 0.0;
+        for(int ii=0; ii<k; ii++){
+          if(i!=ii){ covs = covs+iG(i,ii)*b0(ii);
+          }
         }
-      b1 = solve(LHS, RHS);
-      b2 = wrap(mvnrnd(as<vec>(b1),as<mat>(LHS)));
-      b(j,_) = b2;
-      
-      // Update residuals
-      for(int i=0; i<k; i++){
-        e(_,i) = (e(_,i)-X(_,j)*(b2(i)-b0(i)))*o(_,i);
-      }
-    
-    }
+        
+        //covs = covs/ve(i);
+        covs = covs*ve(i);
+        lambda = iG(i,i)*ve(i);        
+        
+        // Set LHS RHS
+        lhs = xx(j,i) + lambda;
+        rhs = sum(e(_,i)*X(_,j)) + xx(j,i)*b0(i) - covs;        
+        
+        // Update effects
+        b1 = R::rnorm(rhs/lhs,sqrt(ve(i)/lhs));
+        b(j,i) = b1;        
+        
+        // Update residuals
+        e(_,i) = (e(_,i)-X(_,j)*(b1-b0(i)))*o(_,i);}}   
     
     // Intercept
     for(int i=0; i<k; i++){
       tmp = mu(i);
       rhs = sum(e(_,i)*o(_,i));
-      m0 = R::rnorm(tmp+rhs/n(i),sqrt(ve(i)/n(i)));
-      mu(i) = m0;
-      e(_,i) = (e(_,i)-(m0-tmp))*o(_,i);
+      b1 = R::rnorm(tmp+rhs/n(i),sqrt(ve(i)/n(i)));
+      mu(i) = b1;
+      e(_,i) = (e(_,i)-(b1-tmp))*o(_,i);
     }
     
     // Residual variance components update
@@ -128,10 +137,24 @@ SEXP MVBRR(NumericMatrix Y,
     
     // Genetic sum of squares
     a = as<mat>(b);
-    SS = a.t()*a+Sb;
+    u = Z*a;
+    
+    // Sample U
+    for(int i=0; i<n0; i++){
+      u.row(i) = mvnrnd(u.row(i).t(),as<mat>(vb)).t();
+    }
     
     // Genetic covariance
-    vb = wrap(inv(wishrnd(inv(SS),df+p)));
+    SS = u.t()*u+Su;
+    invSS = inv(SS);
+    vb = wrap( inv(wishrnd(invSS,DFb)) );
+    // Rescale in B
+    for(int i=0; i<k; i++){
+      for(int j=0; j<k; j++){
+        vb(i,j) = vb(i,j)/sqrt(MSx(i)*MSx(j));
+      }
+    }
+    
     iG = solve(vb);
     
     // Store posterior sums
