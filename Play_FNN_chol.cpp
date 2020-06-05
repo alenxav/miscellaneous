@@ -11,8 +11,8 @@ using Eigen::Lower;
 MatrixXd ReLU(MatrixXd A){
   for(int i=0; i<A.rows(); ++i){
     for(int j=0; j<A.cols(); ++j){
-      //if(A(i,j)<0.0){A(i,j)=A(i,j)/100.0;} // Leaky ReLU
-      if(A(i,j)<0.0){A(i,j)=0.0;} // Regular ReLU
+      if(A(i,j)<0.0){A(i,j)=A(i,j)/100.0;} // Leaky ReLU
+      //if(A(i,j)<0.0){A(i,j)=0.0;} // Regular ReLU
     }}
   return A;}
 
@@ -43,21 +43,31 @@ MatrixXd Dropout(MatrixXd X, double doRate){
   return DO;}
 
 // [[Rcpp::export]]
-SEXP FNN(MatrixXd Y, // Phenotype
+SEXP DNN(MatrixXd y, // Phenotype
          MatrixXd X, // Genotype
          double rate = 0.1, // Learning rate
          int epochs = 10, // Full-data iterations
          int HL1=200, // Size of hidden layers 1
-         int HL2=100, // Size of hidden layers 2
+         int HL2=200, // Size of hidden layers 2
          double do1 = 0.50, // Droupout rate layer 1
          double do2 = 0.25, // Droupout rate layer 2
-         double h2 = 0.8){ // Heritability / Shrinkage
+         double h2 = 0.8){ // Heritability or Shrinkage
 
   // Get dimensions of inputs
   int n = X.rows();
   int p = X.cols();
-  int k = Y.cols();
+  int k = y.cols();
   
+  // Normalization
+  MatrixXd Y(n,k);
+  VectorXd mu = y.colwise().mean();
+  for(int j=0; j<k; ++j){
+    Y.col(j) = y.col(j);
+    Y.col(j).array() -= mu[j];}
+  VectorXd std = Y.colwise().squaredNorm()/double(n-1);
+  for(int j=0; j<k; ++j){ Y.col(j) /= std[j];}
+  
+  // Print network settings
   cout << "\n Network setup: \n\n";
   cout << "Observations: " << n << "\n";
   cout << "Paramaters: " << p << "\n";
@@ -100,6 +110,7 @@ SEXP FNN(MatrixXd Y, // Phenotype
   for(int j=0; j<p; ++j){ XpX(j,j) = XpX(j,j)+lmb1; }
   LLT<MatrixXd> CholX;
   CholX.compute(XpX);
+  
   // Hidden layers
   MatrixXd HpH1(HL1,HL1);
   MatrixXd HpH2(HL2,HL2);
@@ -183,7 +194,6 @@ SEXP FNN(MatrixXd Y, // Phenotype
     HpH2 = H2.transpose() * H2;
     for(int j=0; j<HL2; ++j){ HpH2(j,j) = HpH2(j,j)+lmb3; }
     // Compute gradient
-    //for(int j=0; j<k; ++j){ dW3.col(j) = CoordDesc(dH3.col(j),H2,W3.col(j),hh2,lmb3);}
     dW3 = HpH2.llt().solve(H2.transpose()*dH3);
     dI3 = H3.colwise().mean();
     // Update 
@@ -202,8 +212,18 @@ SEXP FNN(MatrixXd Y, // Phenotype
     
   }
   
+  // Rescale output
+  MatrixXd HAT(n,k);
+  for(int j=0; j<k; ++j){
+    HAT.col(j) = (H3.col(j)*std[j]).array() + mu[j];
+  }
+  
+  
   // Return list with weights and intercepts
-  return Rcpp::List::create(Rcpp::Named("H1")=H1,
+  return Rcpp::List::create(Rcpp::Named("hat")=HAT,
+                            Rcpp::Named("mu")=mu,
+                            Rcpp::Named("std")=std,
+                            Rcpp::Named("H1")=H1,
                             Rcpp::Named("H2")=H2,
                             Rcpp::Named("H3")=H3,
                             Rcpp::Named("W1")=W1,
