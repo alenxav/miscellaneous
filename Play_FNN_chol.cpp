@@ -11,9 +11,7 @@ using Eigen::Lower;
 MatrixXd ReLU(MatrixXd A){
   for(int i=0; i<A.rows(); ++i){
     for(int j=0; j<A.cols(); ++j){
-      if(A(i,j)<0.0){A(i,j)=A(i,j)/100.0;} // Leaky ReLU
-      //if(A(i,j)<0.0){A(i,j)=0.0;} // Regular ReLU
-    }}
+      if(A(i,j)<0.0){A(i,j)=0.0;}}}
   return A;}
 
 // Fit node function
@@ -42,16 +40,16 @@ MatrixXd Dropout(MatrixXd X, double doRate){
     }else{DO.col(i) = X.col(i);}}
   return DO;}
 
-// [[Rcpp::export]]
-SEXP DNN(MatrixXd y, // Phenotype
+// [[Rcpp::export(.FNNcpp)]]
+SEXP FNN(MatrixXd y, // Phenotype
          MatrixXd X, // Genotype
          double rate = 0.1, // Learning rate
          int epochs = 10, // Full-data iterations
-         int HL1=200, // Size of hidden layers 1
-         int HL2=200, // Size of hidden layers 2
-         double do1 = 0.50, // Droupout rate layer 1
-         double do2 = 0.25, // Droupout rate layer 2
-         double h2 = 0.8){ // Heritability or Shrinkage
+         int HL1 = 100, // Size of hidden layers 1
+         int HL2 = 100, // Size of hidden layers 2
+         double do1 = 0.2, // Droupout rate layer 1
+         double do2 = 0.2, // Droupout rate layer 2
+         double h2 = 0.8){ // Shrinkage
 
   // Get dimensions of inputs
   int n = X.rows();
@@ -77,7 +75,7 @@ SEXP DNN(MatrixXd y, // Phenotype
   cout << "Learning rate: " << rate << "\n";
   cout << "Dropout rate (1): " << do1 << "\n";
   cout << "Dropout rate (2): " << do2 << "\n";
-  cout << "Number of epochs: " << epochs << "\n\n";
+  cout << "Number of epochs: " << epochs << "\n";
   
   // Memory placeholder for weights and intercept
   MatrixXd W1 = MatrixXd::Random(p,HL1); W1 *= (2/sqrt(p));
@@ -104,7 +102,7 @@ SEXP DNN(MatrixXd y, // Phenotype
   double lmb3 = hh2.mean()*shrk;
   
   // Build preconditioning
-  cout << "Factorizing X for pre-conditioning\n";
+  cout << "Factorizing X for Hessian\n";
   // X
   MatrixXd XpX(MatrixXd(p, p).setZero().selfadjointView<Lower>().rankUpdate(X.adjoint()));
   for(int j=0; j<p; ++j){ XpX(j,j) = XpX(j,j)+lmb1; }
@@ -130,13 +128,10 @@ SEXP DNN(MatrixXd y, // Phenotype
   // Loop to fit the DNN
   for(int i=0; i<epochs; ++i){
     
-    cout << "Iteration " << i+1;
-    
     /////////////
     // Layer 1 //
     /////////////
     
-    cout << " (1) ";
     // Back-propagate residuals
     dH3 = Y-H3;
     dH2 = ReLU(dH3*W3.transpose()); 
@@ -154,7 +149,6 @@ SEXP DNN(MatrixXd y, // Phenotype
     // Layer 2 //
     /////////////
     
-    cout << " (2) ";
     // Fit model
     H1 = ReLU(Node(X,W1,I1));
     H2 = ReLU(Node(H1,W2,I2));
@@ -180,7 +174,6 @@ SEXP DNN(MatrixXd y, // Phenotype
     // Layer 3 //
     /////////////
     
-    cout << " (3) ";
     // Fit model
     H2 = ReLU(Node(H1,W2,I2));
     H3 = Node(H2,W3,I3);
@@ -204,11 +197,11 @@ SEXP DNN(MatrixXd y, // Phenotype
     // Report Error //
     //////////////////
     
-    cout << "\n";
     H3 = Node(H2,W3,I3);
     dH3 = Y-H3;
     RSS.row(i) = dH3.colwise().squaredNorm();
-    cout << "RSS " << RSS.row(i) << "\n";
+    
+    cout << "Epoch " << i+1 << ": Loss " << RSS.row(i) << "\n";
     
   }
   
@@ -220,20 +213,44 @@ SEXP DNN(MatrixXd y, // Phenotype
   
   
   // Return list with weights and intercepts
-  return Rcpp::List::create(Rcpp::Named("hat")=HAT,
-                            Rcpp::Named("mu")=mu,
-                            Rcpp::Named("std")=std,
-                            Rcpp::Named("H1")=H1,
-                            Rcpp::Named("H2")=H2,
-                            Rcpp::Named("H3")=H3,
-                            Rcpp::Named("W1")=W1,
-                            Rcpp::Named("I1")=I1,
-                            Rcpp::Named("W2")=W2,
-                            Rcpp::Named("I2")=I2,
-                            Rcpp::Named("W3")=W3,
-                            Rcpp::Named("I3")=I3,
-                            Rcpp::Named("RSS")=RSS);
-  
+  SEXP OUT = Rcpp::List::create(
+    Rcpp::Named("hat")=HAT,
+    Rcpp::Named("mu")=mu,
+    Rcpp::Named("std")=std,
+    Rcpp::Named("H1")=H1,
+    Rcpp::Named("H2")=H2,
+    Rcpp::Named("H3")=H3,
+    Rcpp::Named("W1")=W1,
+    Rcpp::Named("I1")=I1,
+    Rcpp::Named("W2")=W2,
+    Rcpp::Named("I2")=I2,
+    Rcpp::Named("W3")=W3,
+    Rcpp::Named("I3")=I3,
+    Rcpp::Named("RSS")=RSS);
+  return OUT;
 }
 
+/*** R
+# R interface for fitting
+DNN = function(y,X,...){
+  Y = data.matrix(y);
+  if(anyNA(Y)){
+    w = apply(Y,1,anyNA);
+    Y = Y[-w,]; X = X[-w,];}
+  fit = .FNNcpp(y=Y,X=X,...);
+  class(fit) = 'DNN';
+  return(fit);}
 
+# R interface for predicting
+predict.DNN = function(object,newdata){
+  if(class(object)!='DNN') stop('Object is not a DNN model');
+  h = object;
+  a = t(t(newdata %*% h$W1)+h$I1);
+  a[a<0] = 0;
+  a = t(t(a %*% h$W2)+h$I2);
+  a[a<0] = 0;
+  a = t(t(a %*% h$W3)+h$I3);
+  a = t(t(a)*h$std);
+  a = t(t(a)+h$mu);
+  return(a);}
+*/
