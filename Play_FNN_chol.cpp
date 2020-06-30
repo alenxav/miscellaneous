@@ -47,8 +47,8 @@ SEXP FNN(MatrixXd y, // Phenotype
          int epochs = 10, // Full-data iterations
          int HL1 = 100, // Size of hidden layers 1
          int HL2 = 100, // Size of hidden layers 2
-         double do1 = 0.2, // Droupout rate layer 1
-         double do2 = 0.2, // Droupout rate layer 2
+         double do1 = 0.0, // Droupout rate layer 1
+         double do2 = 0.0, // Droupout rate layer 2
          double h2 = 0.8){ // Shrinkage
 
   // Get dimensions of inputs
