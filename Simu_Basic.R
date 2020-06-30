@@ -1,9 +1,7 @@
 library(AlphaSimR)
-library(bWGR)
 
 # Selection intesity
-Intensity = 0.05
-GS_model = emBA
+Intensity = 0.10
 
 # Founder settings
 founderPop <- runMacs(nInd = 100,
@@ -78,13 +76,6 @@ for(run in 1:Number_of_runs){
     
     # fit using bWGR package
     fit = GS_model(pop@pheno[,1],gen)
-    
-    # replacing original parameters by bWGR's
-    names(fit) = tolower(names(fit))
-    ans@bv[[1]]@addEff = fit$b
-    ans@bv[[1]]@intercept = fit$mu-mean(pop@pheno[,1])
-    ans@Vu[1,1] = (var(pop@pheno[,1])-fit$ve)/sum(apply(gen,2,var))
-    ans@Ve[1,1] = fit$ve
     
     # Add EBVs to the pop
     pop = setEBV(pop, ans, simParam=SP)

@@ -1,13 +1,11 @@
 library(AlphaSimR)
 library(ggplot2)
-library(bWGR)
 
 # Set (make it reproducible)
 set.seed(12345)
 
 # Selection intesity
 Intensity = 0.2
-GS_model = BayesA
 
 # Founder settings
 founderPop <- runMacs(nInd = 100,
@@ -73,12 +71,6 @@ for(i in 1:20){
   # fit using bWGR package
   fit = GS_model(pop@pheno[,1],gen)
 
-  # replacing original parameters by bWGR's
-  ans@bv[[1]]@addEff = fit$b
-  ans@bv[[1]]@intercept = fit$mu-mean(pop@pheno[,1])
-  ans@Vu[1,1] = (var(pop@pheno[,1])-fit$ve)/sum(apply(gen,2,var))
-  ans@Ve[1,1] = fit$ve
-  
   # Add EBVs to the pop
   pop = setEBV(pop, ans, simParam=SP)
 
