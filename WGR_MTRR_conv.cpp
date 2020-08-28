@@ -10,8 +10,7 @@ SEXP MV2(NumericMatrix Y,
          double SOR = 1.0, // 0.75 is a good value
          double MultiplyOffDiag = 1.0, // 0.97 is a good value
          double MultiplyDiag = 1.0, // 1.03 is a good value
-         double AddToDiag = 0.0, // 0.01 is a good value
-         bool DecayAddToDiag = false){
+         double AddToDiag = 0.0){ // 0.01 is a good value
   // Obtain environment containing function
   Rcpp::Environment base("package:base");
   Rcpp::Function solve = base["solve"];
@@ -107,9 +106,8 @@ SEXP MV2(NumericMatrix Y,
     // Genetic correlations
     for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
       GC(i,j)=vb(i,j)/(sqrt(vb(i,i)*vb(j,j)));}}
-    // Decay on ridging & Successive Over Relaxation
-    if (numit%5==0){if(SOR>1){SOR=SOR-0.01;}; if(SOR<1) SOR=SOR+0.01; } 
-    if( DecayAddToDiag & (numit%20==0) & (AddToDiag>0) )  AddToDiag0 = (AddToDiag*sqrt(20/numit)) * (vy/MSx);
+    // Decay on Successive Over Relaxation
+    if (numit%10==0){if(SOR>1){SOR=SOR-0.01;}; if(SOR<1) SOR=SOR+0.01; } 
     // Convergence
     cnv = log(sum((beta0-b)*(beta0-b)));
     StoreConv[numit] = cnv;
