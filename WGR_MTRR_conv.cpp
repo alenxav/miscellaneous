@@ -109,7 +109,7 @@ SEXP MV2(NumericMatrix Y,
       GC(i,j)=vb(i,j)/(sqrt(vb(i,i)*vb(j,j)));}}
     // Decay on ridging & Successive Over Relaxation
     if (numit%5==0){if(SOR>1){SOR=SOR-0.01;}; if(SOR<1) SOR=SOR+0.01; } 
-    if( DecayAddToDiag & (numit%20==0) & (AddToDiag>1) )  AddToDiag0 = (AddToDiag*sqrt(20/numit)) * (vy/MSx);
+    if( DecayAddToDiag & (numit%20==0) & (AddToDiag>0) )  AddToDiag0 = (AddToDiag*sqrt(20/numit)) * (vy/MSx);
     // Convergence
     cnv = log(sum((beta0-b)*(beta0-b)));
     StoreConv[numit] = cnv;
