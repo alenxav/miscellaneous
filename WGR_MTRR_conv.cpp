@@ -2,11 +2,40 @@
 #include <iostream>
 using namespace Rcpp;
 using std::cout;
+
+NumericMatrix EigRec(NumericMatrix A){
+  // Get R functions
+  Rcpp::Environment base("package:base");
+  Rcpp::Function eigen = base["eigen"];
+  Rcpp::Function crossprod = base["crossprod"];
+  Rcpp::Function tcrossprod = base["tcrossprod"];
+  Rcpp::Function diag = base["diag"];
+  // Eigendecompose A
+  List EV = eigen(A,true);
+  int k = A.ncol();
+  NumericVector EigVal = EV["values"], tmpVec(k);
+  NumericVector EigVal0 = EigVal+0.0;
+  NumericMatrix EigVec = EV["vectors"];
+  // Select eigen pairs
+  tmpVec = EigVal/sum(EigVal);
+  for(int i=1; i<k; i++){ tmpVec[i] = tmpVec[i]+tmpVec[i-1]; }
+  for(int i=0; i<k; i++){ if(tmpVec(i)>0.98){ EigVal(i) = 0.0; }}
+  // Inverse Eigen value matrix
+  NumericMatrix DiagEigVal = diag(EigVal);
+  // Reconstruct A = UDU'
+  NumericMatrix RecA = tcrossprod(EigVec,tcrossprod(EigVec,DiagEigVal));
+  // Reconstruct trace
+  for(int i=0; i<k; i++){ RecA(i,i) = A(i,i); }
+  // Output
+  return RecA;
+}
+
 // [[Rcpp::export]]
 SEXP MV2(NumericMatrix Y,
          NumericMatrix X,
          int maxit = 200,
          double tol = 10e-10,
+         bool EigenControl = true,
          double SOR = 1.0, // 0.75 is a good value
          double MultiplyOffDiag = 1.0, // 0.97 is a good value
          double MultiplyDiag = 1.0, // 1.03 is a good value
@@ -87,27 +116,32 @@ SEXP MV2(NumericMatrix Y,
     // Residual variance components update
     for(int i=0; i<k; i++){
       ve(i) = MultiplyDiag * (sum(e(_,i)*y(_,i)))/n(i);
-      }
+    }
     // Genetic covariance components update
     for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
       // Diag VC
       if(i==j){
-           //vb(i,j) = (1.01*vy(i)-ve(i))/MSx(i);
-           tmp = (sum(fit(_,i)*y(_,j)) )/( n(i) *MSx(i) );
-           vb(i,j) = tmp*MultiplyDiag + AddToDiag0(i);
-        }else{
-          if(i>j){
-            tmp = (sum(fit(_,i)*y(_,j))+sum(fit(_,j)*y(_,i))) / ((n(i)*MSx(i))+(n(j)*MSx(j)));
-            vb(i,j) = tmp*MultiplyOffDiag;
-            vb(j,i) = vb(i,j);
-          }
-        }}}
-    iG = solve(vb);
+        //vb(i,j) = (1.01*vy(i)-ve(i))/MSx(i);
+        tmp = (sum(fit(_,i)*y(_,j)) )/( n(i) *MSx(i) );
+        vb(i,j) = tmp*MultiplyDiag + AddToDiag0(i);
+      }else{
+        if(i>j){
+          tmp = (sum(fit(_,i)*y(_,j))+sum(fit(_,j)*y(_,i))) / ((n(i)*MSx(i))+(n(j)*MSx(j)));
+          vb(i,j) = tmp*MultiplyOffDiag;
+          vb(j,i) = vb(i,j);
+        }
+      }}}
+    // Inversion of genetic covariance
+    if(EigenControl){
+      iG = solve(EigRec(vb));
+    }else{
+      iG = solve(vb);
+    }
     // Genetic correlations
     for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
       GC(i,j)=vb(i,j)/(sqrt(vb(i,i)*vb(j,j)));}}
-    // Decay on Successive Over Relaxation
-    if (numit%10==0){if(SOR>1){SOR=SOR-0.01;}; if(SOR<1) SOR=SOR+0.01; } 
+    // Decay on ridging & Successive Over Relaxation
+    if (numit%5==0){if(SOR>1){SOR=SOR-0.01;}; if(SOR<1) SOR=SOR+0.01; } 
     // Convergence
     cnv = log(sum((beta0-b)*(beta0-b)));
     StoreConv[numit] = cnv;
@@ -119,6 +153,7 @@ SEXP MV2(NumericMatrix Y,
     StoreConvBV[numit] = cnv;
     StoreH2(numit,_) = 1-ve/vy;
     ++numit;
+    // Print status
     if(numit % 50 == 0){ cout << "Iter: "<< numit << " || Conv: "<< cnv << "\n"; } 
     if( cnv<logtol ){break;}
   }
