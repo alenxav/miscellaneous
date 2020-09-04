@@ -95,13 +95,15 @@ SEXP MV2(NumericMatrix Y,
     beta0 = b+0.0; fit0 = fit+0.0;
     vb0 = vb+0.0; ve0 = ve+0.0;
     GC0 = GC+0.0;
+    
     // Gauss-Seidel loop
     for(int j=0; j<p; j++){
       b0 = b(j,_);
       LHS = iG+0;
       for(int i=0; i<k; i++){
-        LHS(i,i) = iG(i,i)+(xx(j,i)/ve(i));
-        RHS(i) = (SOR*sum(e(_,i)*X(_,j))+(2.0-SOR)*xx(j,i)*b0(i))/(ve(i)/d(j));}
+        LHS(i,i) = iG(i,i)+(xx(j,i)/(ve(i)/d(j)));
+        RHS(i) = (SOR*sum(e(_,i)*X(_,j))+(2.0-SOR)*xx(j,i)*b0(i))/(ve(i)/d(j));
+        }
       // Update effects
       b1 = solve(LHS, RHS);
       b(j,_) = b1;
@@ -109,6 +111,7 @@ SEXP MV2(NumericMatrix Y,
       for(int i=0; i<k; i++){
         e(_,i) = (e(_,i)-X(_,j)*(b1(i)-b0(i)))*o(_,i);}
     }
+    
     // Fitting model
     for(int i=0; i<n0; i++){
       for(int j=0; j<k; j++){
