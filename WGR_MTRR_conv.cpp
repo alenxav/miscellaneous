@@ -1,7 +1,5 @@
 #include <Rcpp.h>
-#include <iostream>
 using namespace Rcpp;
-using std::cout;
 
 NumericMatrix EigRec(NumericMatrix A){
   // Get R functions
@@ -19,7 +17,7 @@ NumericMatrix EigRec(NumericMatrix A){
   // Select eigen pairs
   tmpVec = EigVal/sum(EigVal);
   for(int i=1; i<k; i++){ tmpVec[i] = tmpVec[i]+tmpVec[i-1]; }
-  for(int i=0; i<k; i++){ if(tmpVec(i)>0.98){ EigVal(i) = 0.0; }}
+  for(int i=0; i<k; i++){ if(tmpVec(i)>VarExpXFA){ EigVal(i) = 0.0; }}
   // Inverse Eigen value matrix
   NumericMatrix DiagEigVal = diag(EigVal);
   // Reconstruct A = UDU'
@@ -33,18 +31,25 @@ NumericMatrix EigRec(NumericMatrix A){
 // [[Rcpp::export]]
 SEXP MV2(NumericMatrix Y,
          NumericMatrix X,
-         int maxit = 200,
+         Rcpp::Nullable<Rcpp::NumericVector> D = R_NilValue,
+         // Convergence settings
+         int maxit = 500,
          double tol = 10e-10,
-         bool EigenControl = true,
          double SOR = 1.0, // 0.75 is a good value
          double MultiplyOffDiag = 1.0, // 0.97 is a good value
          double MultiplyDiag = 1.0, // 1.03 is a good value
-         double AddToDiag = 0.0){ // 0.01 is a good value
+         double AddToDiag = 0.0, // 0.01 is a good value
+         bool EigenControl = true, // Activate XFA
+         double VarExpXFA = 0.98) // Total variance for XFA
+  { 
   // Obtain environment containing function
   Rcpp::Environment base("package:base");
   Rcpp::Function solve = base["solve"];
-  // Functions starts here
   int k = Y.ncol(), p = X.ncol(), n0 = X.nrow();
+  // Weights
+  NumericVector d(p);
+  if (D.isNotNull()){d=D;}else{for(int i=0; i<p; i++){d[i] = 1.0;}}
+  // Functions starts here
   NumericMatrix fit(n0,k),o(n0,k),y(n0,k),e(n0,k);
   for(int i=0; i<k; i++){
     o(_,i) = ifelse(is_na(Y(_,i)),0,1);
@@ -99,7 +104,7 @@ SEXP MV2(NumericMatrix Y,
       LHS = iG+0;
       for(int i=0; i<k; i++){
         LHS(i,i) = iG(i,i)+(xx(j,i)/ve(i));
-        RHS(i) = (SOR*sum(e(_,i)*X(_,j))+(2.0-SOR)*xx(j,i)*b0(i))/ve(i);}
+        RHS(i) = (SOR*sum(e(_,i)*X(_,j))+(2.0-SOR)*xx(j,i)*b0(i))/(ve(i)/d(j));}
       // Update effects
       b1 = solve(LHS, RHS);
       b(j,_) = b1;
@@ -154,7 +159,7 @@ SEXP MV2(NumericMatrix Y,
     StoreH2(numit,_) = 1-ve/vy;
     ++numit;
     // Print status
-    if(numit % 50 == 0){ cout << "Iter: "<< numit << " || Conv: "<< cnv << "\n"; } 
+    if(numit % 50 == 0){ Rcout << "Iter: "<< numit << " || Conv: "<< cnv << "\n"; } 
     if( cnv<logtol ){break;}
   }
   // Fitting the model
