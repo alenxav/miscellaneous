@@ -1,7 +1,7 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
-NumericMatrix EigRec(NumericMatrix A, double VarExp){
+NumericMatrix EigRec(NumericMatrix A){
   // Get R functions
   Rcpp::Environment base("package:base");
   Rcpp::Function eigen = base["eigen"];
@@ -32,15 +32,13 @@ NumericMatrix EigRec(NumericMatrix A, double VarExp){
 SEXP MV2(NumericMatrix Y,
          NumericMatrix X,
          Rcpp::Nullable<Rcpp::NumericVector> D = R_NilValue,
-         // Convergence settings
          int maxit = 500,
          double tol = 10e-10,
          double SOR = 1.0, // 0.75 is a good value
          double MultiplyOffDiag = 1.0, // 0.97 is a good value
          double MultiplyDiag = 1.0, // 1.03 is a good value
          double AddToDiag = 0.0, // 0.01 is a good value
-         bool EigenControl = true) // Activate XFA
-  { 
+         bool EigenControl = true){ // Activate XFA
   // Obtain environment containing function
   Rcpp::Environment base("package:base");
   Rcpp::Function solve = base["solve"];
