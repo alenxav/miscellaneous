@@ -1,7 +1,7 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
-NumericMatrix EigRec(NumericMatrix A){
+NumericMatrix EigRec(NumericMatrix A, double VarExp){
   // Get R functions
   Rcpp::Environment base("package:base");
   Rcpp::Function eigen = base["eigen"];
@@ -17,7 +17,7 @@ NumericMatrix EigRec(NumericMatrix A){
   // Select eigen pairs
   tmpVec = EigVal/sum(EigVal);
   for(int i=1; i<k; i++){ tmpVec[i] = tmpVec[i]+tmpVec[i-1]; }
-  for(int i=0; i<k; i++){ if(tmpVec(i)>VarExpXFA){ EigVal(i) = 0.0; }}
+  for(int i=0; i<k; i++){ if(tmpVec(i)>0.98){ EigVal(i) = 0.0; }}
   // Inverse Eigen value matrix
   NumericMatrix DiagEigVal = diag(EigVal);
   // Reconstruct A = UDU'
@@ -39,8 +39,7 @@ SEXP MV2(NumericMatrix Y,
          double MultiplyOffDiag = 1.0, // 0.97 is a good value
          double MultiplyDiag = 1.0, // 1.03 is a good value
          double AddToDiag = 0.0, // 0.01 is a good value
-         bool EigenControl = true, // Activate XFA
-         double VarExpXFA = 0.98) // Total variance for XFA
+         bool EigenControl = true) // Activate XFA
   { 
   // Obtain environment containing function
   Rcpp::Environment base("package:base");
