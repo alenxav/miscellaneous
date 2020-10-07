@@ -3,6 +3,10 @@ tlm = function(formula,data,Tukey=F,...){
   # fit the model
   fnew = update(formula,~.-1)
   fit = lm(formula=fnew,data=data)
+  
+  key = gsub(' .+','',as.character(formula)[3])
+  nl = length(levels(data[[key]]))
+    
   Y = predict(fit,data,terms=key,type='term')+fit$residuals
   data_new = fit$model
   data_new[['Y']] = Y
