@@ -32,9 +32,9 @@ for(i in 1:100){
   e2 = ActFun(e3 %*% t(b3))
   e1 = ActFun(e2 %*% t(b2))
   # Update coefficients
-  b1 = b1 - DropOut(2*t(X)%*%(H1-e1)*0.0001)
-  b2 = b2 - DropOut(2*t(H1)%*%(H2-e2)*0.01 )
-  b3 = b3 - DropOut(2*t(H2)%*%(H3-e3)*0.1  )
+  b1 = b1 - DropOut(t(X)%*%(H1-e1)+b1)*0.0001
+  b2 = b2 - DropOut(t(H1)%*%(H2-e2)+b2)*0.01
+  b3 = b3 - DropOut(t(H2)%*%(H3-e3)+b3)*0.1
   # Store convergence
   CNV1 = c(CNV1,mean(apply(e3,2,var,na.rm=T)))
   CNV2 = c(CNV2,mean(diag(cor(H3,y,use='p'))))
