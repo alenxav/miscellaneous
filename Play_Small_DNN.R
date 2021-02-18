@@ -14,15 +14,14 @@ p = ncol(X)
 k = ncol(y)
 # Number of nodes
 n1 = 20
-n2 = 30
+n2 = 20
 # Starting weights
 b1 = matrix(rnorm(n1*p,0,1/p),p,n1)
 b2 = matrix(rnorm(n1*n2,0,1/n1),n1,n2)
 b3 = matrix(rnorm(n2,0,1/n2),n2,k)
 # Iterations (backprop)
 CNV1 = CNV2 = c()
-for(i in 1:100){
-  
+for(i in 1:100){  
   cat('Iteration',i,'\n')
   # Fit hidden layers (H)
   H1 = ActFun(X%*%b1)
@@ -38,10 +37,8 @@ for(i in 1:100){
   b2 = b2 - ( 2*t(H1)%*%(H2-e2)*0.01  )
   b3 = b3 - ( 2*t(H2)%*%(H3-e3)*0.1  )
   # Print Residual Variance
-  cat('MSE',apply(e3,2,var),'\n')
-  cat('COR',diag(cor(H3,y)),'\n')
-  CNV1 = c(CNV1,sum(apply(e3,2,var)))
-  CNV2 = c(CNV2,mean(diag(cor(H3,y))))
+  CNV1 = c(CNV1,mean(apply(e3,2,var,na.rm=T)))
+  CNV2 = c(CNV2,mean(diag(cor(H3,y,use='p'))))
 }
 
 
