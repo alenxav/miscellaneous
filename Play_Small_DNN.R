@@ -12,7 +12,7 @@ n = nrow(X)
 p = ncol(X)
 k = ncol(y)
 # Learning settings
-n1 = 8; n2 = 4; rate = 0.01; lmb = 10
+n1 = 8; n2 = 4; lmb = 10; rate = 1/c(p,n1,n2)
 # Starting weights
 b1 = matrix(rnorm(n1*p,0,1/p),p,n1)
 b2 = matrix(rnorm(n1*n2,0,1/n1),n1,n2)
@@ -30,9 +30,9 @@ for(i in 1:100){
   e2 = ActFun(e3 %*% t(b3))
   e1 = ActFun(e2 %*% t(b2))
   # Update coefficients
-  b1 = b1 - DropOut( t(X)%*%(H1-e1)+lmb*b1)*(2/n)*rate
-  b2 = b2 - DropOut(t(H1)%*%(H2-e2)+lmb*b2)*(2/n)*rate
-  b3 = b3 - DropOut(t(H2)%*%(H3-e3))*(2/n)*rate
+  b1 = b1 - DropOut( t(X)%*%(H1-e1)+lmb*b1)*(2/n)*rate[1]
+  b2 = b2 - DropOut(t(H1)%*%(H2-e2)+lmb*b2)*(2/n)*rate[2]
+  b3 = b3 - DropOut(t(H2)%*%(H3-e3))*(2/n)*rate[3]
   # Store convergence
   CNV1 = c(CNV1,mean(apply(e3,2,var,na.rm=T)))
   CNV2 = c(CNV2,mean(diag(cor(H3,y,use='p'))))
