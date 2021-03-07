@@ -32,14 +32,15 @@ NumericMatrix EigRec(NumericMatrix A){
 SEXP MV2(NumericMatrix Y,
          NumericMatrix X,
          Rcpp::Nullable<Rcpp::NumericVector> D = R_NilValue,
-         int maxit = 500,
-         double tol = 10e-10,
+         int maxit = 500, // maximum number of iterations
+         double tol = 10e-10, // convergence criterion
          double SOR = 1.0, // 0.75 is a good value
          double MultiplyOffDiag = 1.0, // 0.97 is a good value
          double MultiplyDiag = 1.0, // 1.03 is a good value
          double AddToDiag = 0.0, // 0.01 is a good value
          bool TH = true, // compute via Tilde-Hat
          bool UpdateB0 = true, // update intercept
+         int minit = 10, // minimum number of iterations
          int PrintEveryX = 100, // How often print convergence
          bool EigenControl = true){ // Activate XFA
   // Obtain environment containing function
@@ -182,7 +183,7 @@ SEXP MV2(NumericMatrix Y,
     ++numit;
     // Print status
     if(numit % PrintEveryX == 0){ Rcout << "Iter: "<< numit << " || Conv: "<< cnv << "\n"; } 
-    if( cnv<logtol ){break;}
+    if( (numit > minit) & (cnv<logtol) ){break;}
   }
   // Fitting the model
   NumericVector h2(k); h2 = 1-ve/vy;
