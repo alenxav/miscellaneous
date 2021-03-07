@@ -38,8 +38,9 @@ SEXP MV2(NumericMatrix Y,
          double MultiplyOffDiag = 1.0, // 0.97 is a good value
          double MultiplyDiag = 1.0, // 1.03 is a good value
          double AddToDiag = 0.0, // 0.01 is a good value
-         bool TH = false, // compute via accelerated Tilde-Hat
+         bool TH = true, // compute via Tilde-Hat
          bool UpdateB0 = true, // update intercept
+         int PrintEveryX = 100, // How often print convergence
          bool EigenControl = true){ // Activate XFA
   // Obtain environment containing function
   Rcpp::Environment base("package:base");
@@ -180,7 +181,7 @@ SEXP MV2(NumericMatrix Y,
     StoreH2(numit,_) = 1-ve/vy;
     ++numit;
     // Print status
-    if(numit % 10 == 0){ Rcout << "Iter: "<< numit << " || Conv: "<< cnv << "\n"; } 
+    if(numit % PrintEveryX == 0){ Rcout << "Iter: "<< numit << " || Conv: "<< cnv << "\n"; } 
     if( cnv<logtol ){break;}
   }
   // Fitting the model
