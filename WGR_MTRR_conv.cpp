@@ -170,9 +170,7 @@ SEXP MV2(NumericMatrix Y,
       GC(i,j)=vb(i,j)/(sqrt(vb(i,i)*vb(j,j)));}}
     // Decay on ridging & Successive Over Relaxation
     if (numit%5==0){if(SOR>1){SOR=SOR-0.01;}; if(SOR<1) SOR=SOR+0.01; } 
-    // Convergence
-    cnv = log(sum((beta0-b)*(beta0-b)));
-    StoreConv[numit] = cnv;
+    // Convergence    
     cnv = log(sum((vb0-vb)*(vb0-vb))+sum((ve0-ve)*(ve0-ve)));
     StoreConvVC[numit] = cnv;
     cnv = log(sum((GC0-GC)*(GC0-GC)));
@@ -180,6 +178,8 @@ SEXP MV2(NumericMatrix Y,
     cnv = log(sum((fit0-fit)*(fit0-fit)));
     StoreConvBV[numit] = cnv;
     StoreH2(numit,_) = 1-ve/vy;
+    cnv = log(sum((beta0-b)*(beta0-b)));
+    StoreConv[numit] = cnv;
     ++numit;
     // Print status
     if(numit % PrintEveryX == 0){ Rcout << "Iter: "<< numit << " || Conv: "<< cnv << "\n"; } 
@@ -193,7 +193,7 @@ SEXP MV2(NumericMatrix Y,
   List convergence = List::create(Named("ConvCoef")=StoreConv,
                                   Named("ConvGC")=StoreConvGC,
                                   Named("ConvBV")=StoreConvBV,
-                                  Named("ConvVC")=StoreConvBV,
+                                  Named("ConvVC")=StoreConvVC,
                                   Named("AddToDiag")=AddToDiag0,
                                   Named("StoredH2")=StoreH2);
   List covariances = List::create(Named("h2")=h2,
