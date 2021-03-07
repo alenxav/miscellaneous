@@ -38,6 +38,8 @@ SEXP MV2(NumericMatrix Y,
          double MultiplyOffDiag = 1.0, // 0.97 is a good value
          double MultiplyDiag = 1.0, // 1.03 is a good value
          double AddToDiag = 0.0, // 0.01 is a good value
+         bool TH = false, // compute via accelerated Tilde-Hat
+         bool UpdateB0 = true, // update intercept
          bool EigenControl = true){ // Activate XFA
   // Obtain environment containing function
   Rcpp::Environment base("package:base");
@@ -53,7 +55,7 @@ SEXP MV2(NumericMatrix Y,
     y(_,i) = ifelse(is_na(Y(_,i)),0,Y(_,i));}
   NumericVector n = colSums(o);
   // Mu
-  NumericVector mu = colSums(y)/n;
+  NumericVector mu = colSums(y)/n, mu0(k);
   for(int j=0; j<k; j++){y(_,j) = (y(_,j)-mu(j))*o(_,j);}
   // Marker variance
   NumericMatrix xx(p,k), vx(p,k);
@@ -75,10 +77,16 @@ SEXP MV2(NumericMatrix Y,
     vb(i,i) = ve(i)/MSx(i);
     rho(i,i) = 1;}
   iG = solve(vb);
+  // Beta tilde
+  NumericMatrix tilde(p,k);
+  if(TH){
+    for(int i=0; i<p; i++){
+      for(int j=0; j<k; j++){tilde(i,j) =  sum(X(_,i)*y(_,j));}}
+  }
   // Convergence control
   NumericMatrix beta0(p,k);
   int numit = 0.0;
-  double cnv = 1.0;
+  double cnv = 10.0;
   double logtol = log(tol);
   // Genetic correlation
   NumericMatrix GC(k,k);
@@ -95,7 +103,6 @@ SEXP MV2(NumericMatrix Y,
     beta0 = b+0.0; fit0 = fit+0.0;
     vb0 = vb+0.0; ve0 = ve+0.0;
     GC0 = GC+0.0;
-    
     // Gauss-Seidel loop
     for(int j=0; j<p; j++){
       b0 = b(j,_);
@@ -103,7 +110,7 @@ SEXP MV2(NumericMatrix Y,
       for(int i=0; i<k; i++){
         LHS(i,i) = iG(i,i)+(xx(j,i)/(ve(i)/d(j)));
         RHS(i) = (SOR*sum(e(_,i)*X(_,j))+(2.0-SOR)*xx(j,i)*b0(i))/(ve(i)/d(j));
-        }
+      }
       // Update effects
       b1 = solve(LHS, RHS);
       b(j,_) = b1;
@@ -111,31 +118,45 @@ SEXP MV2(NumericMatrix Y,
       for(int i=0; i<k; i++){
         e(_,i) = (e(_,i)-X(_,j)*(b1(i)-b0(i)))*o(_,i);}
     }
-    
-    // Fitting model
-    for(int i=0; i<n0; i++){
-      for(int j=0; j<k; j++){
-        fit(i,j) = sum(X(i,_)*b(_,j));
-      }
-    }
     // Residual variance components update
     for(int i=0; i<k; i++){
       ve(i) = MultiplyDiag * (sum(e(_,i)*y(_,i)))/n(i);
     }
-    // Genetic covariance components update
-    for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
-      // Diag VC
-      if(i==j){
-        //vb(i,j) = (1.01*vy(i)-ve(i))/MSx(i);
-        tmp = (sum(fit(_,i)*y(_,j)) )/( n(i) *MSx(i) );
-        vb(i,j) = tmp*MultiplyDiag + AddToDiag0(i);
-      }else{
-        if(i>j){
-          tmp = (sum(fit(_,i)*y(_,j))+sum(fit(_,j)*y(_,i))) / ((n(i)*MSx(i))+(n(j)*MSx(j)));
-          vb(i,j) = tmp*MultiplyOffDiag;
-          vb(j,i) = vb(i,j);
-        }
-      }}}
+    if(UpdateB0){
+      // Update intercept
+      mu0 = colSums(e)/n; mu = mu+mu0;
+      for(int j=0; j<k; j++){y(_,j) = (e(_,j)-mu0(j))*o(_,j);}
+    }
+    if(TH){
+      // Calculate co-variances
+      for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
+        if(i==j){
+          vb(i,j) = (MultiplyDiag*vy(i)-ve(i))/MSx(i) + AddToDiag0(i);
+        }else{
+          if(i>j){
+            tmp = ( sum(tilde(_,i)*b(_,j)) +sum(tilde(_,j)*b(_,i) )  ) / ((n(i)*MSx(i))+(n(j)*MSx(j)));
+            vb(i,j) = tmp*MultiplyOffDiag;
+            vb(j,i) = vb(i,j);
+          }
+        }}}
+    }else{
+      // Fitting model
+      for(int i=0; i<n0; i++){
+        for(int j=0; j<k; j++){
+          fit(i,j) = sum(X(i,_)*b(_,j));}}
+      // Calculate co-variances
+      for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
+        if(i==j){
+          tmp = (sum(fit(_,i)*y(_,j)) )/( n(i) *MSx(i) );
+          vb(i,j) = tmp*MultiplyDiag + AddToDiag0(i);
+        }else{
+          if(i>j){
+            tmp = (sum(fit(_,i)*y(_,j))+sum(fit(_,j)*y(_,i))) / ((n(i)*MSx(i))+(n(j)*MSx(j)));
+            vb(i,j) = tmp*MultiplyOffDiag;
+            vb(j,i) = vb(i,j);
+          }
+        }}}
+    }
     // Inversion of genetic covariance
     if(EigenControl){
       iG = solve(EigRec(vb));
@@ -159,7 +180,7 @@ SEXP MV2(NumericMatrix Y,
     StoreH2(numit,_) = 1-ve/vy;
     ++numit;
     // Print status
-    if(numit % 50 == 0){ Rcout << "Iter: "<< numit << " || Conv: "<< cnv << "\n"; } 
+    if(numit % 10 == 0){ Rcout << "Iter: "<< numit << " || Conv: "<< cnv << "\n"; } 
     if( cnv<logtol ){break;}
   }
   // Fitting the model
