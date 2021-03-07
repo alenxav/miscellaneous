@@ -29,20 +29,19 @@ NumericMatrix EigRec(NumericMatrix A){
 }
 
 // [[Rcpp::export]]
-SEXP MV2(NumericMatrix Y,
-         NumericMatrix X,
-         Rcpp::Nullable<Rcpp::NumericVector> D = R_NilValue,
-         int maxit = 500, // maximum number of iterations
-         double tol = 10e-10, // convergence criterion
-         double SOR = 1.0, // 0.75 is a good value
-         double MultiplyOffDiag = 1.0, // 0.97 is a good value
-         double MultiplyDiag = 1.0, // 1.03 is a good value
-         double AddToDiag = 0.0, // 0.01 is a good value
-         bool TH = true, // compute via accelerated Tilde-Hat
-         bool UpdateB0 = true, // update intercept
-         int minit = 10, // minimum number of iterations
-         int PrintEveryX = 100, // How often print convergence
-         bool EigenControl = true){ // Activate XFA
+SEXP MV(NumericMatrix Y,
+        NumericMatrix X,
+        Rcpp::Nullable<Rcpp::NumericVector> D = R_NilValue,
+        int maxit = 500, // maximum number of iterations
+        double tol = 10e-10, // convergence criterion
+        double SOR = 1.0, // 0.75 is a good value
+        double MultiplyOffDiag = 1.0, // 0.97 is a good value
+        double MultiplyDiag = 1.0, // 1.03 is a good value
+        double AddToDiag = 0.0, // 0.01 is a good value
+        bool TH = true, // compute via Tilde-Hat
+        bool UpdateB0 = true, // update intercept
+        int PrintEveryX = 100, // How often print convergence
+        bool EigenControl = true){ // Activate XFA
   // Obtain environment containing function
   Rcpp::Environment base("package:base");
   Rcpp::Function solve = base["solve"];
@@ -97,8 +96,8 @@ SEXP MV2(NumericMatrix Y,
   // Convergence analysis
   NumericVector AddToDiag0 = AddToDiag*(vy/MSx);
   NumericVector StoreConv(maxit), StoreConvGC(maxit), ve0(k);
-  NumericVector StoreConvBV(maxit), StoreConvVC(maxit);
-  NumericMatrix StoreH2(maxit,k), GC0(k,k), fit0(n0,k), vb0(k,k);
+  NumericVector StoreConvVC(maxit);
+  NumericMatrix GC0(k,k), fit0(n0,k), vb0(k,k);
   // Loop
   while(numit<maxit){
     // Store pre-iteration
@@ -170,20 +169,17 @@ SEXP MV2(NumericMatrix Y,
       GC(i,j)=vb(i,j)/(sqrt(vb(i,i)*vb(j,j)));}}
     // Decay on ridging & Successive Over Relaxation
     if (numit%5==0){if(SOR>1){SOR=SOR-0.01;}; if(SOR<1) SOR=SOR+0.01; } 
-    // Convergence    
+    // Convergence
     cnv = log(sum((vb0-vb)*(vb0-vb))+sum((ve0-ve)*(ve0-ve)));
     StoreConvVC[numit] = cnv;
     cnv = log(sum((GC0-GC)*(GC0-GC)));
     StoreConvGC[numit] = cnv;
-    cnv = log(sum((fit0-fit)*(fit0-fit)));
-    StoreConvBV[numit] = cnv;
-    StoreH2(numit,_) = 1-ve/vy;
     cnv = log(sum((beta0-b)*(beta0-b)));
     StoreConv[numit] = cnv;
     ++numit;
     // Print status
     if(numit % PrintEveryX == 0){ Rcout << "Iter: "<< numit << " || Conv: "<< cnv << "\n"; } 
-    if( (numit > minit) & (cnv<logtol) ){break;}
+    if( cnv<logtol ){break;}
   }
   // Fitting the model
   NumericVector h2(k); h2 = 1-ve/vy;
@@ -192,10 +188,8 @@ SEXP MV2(NumericMatrix Y,
   // Output lists
   List convergence = List::create(Named("ConvCoef")=StoreConv,
                                   Named("ConvGC")=StoreConvGC,
-                                  Named("ConvBV")=StoreConvBV,
                                   Named("ConvVC")=StoreConvVC,
-                                  Named("AddToDiag")=AddToDiag0,
-                                  Named("StoredH2")=StoreH2);
+                                  Named("AddToDiag")=AddToDiag0);
   List covariances = List::create(Named("h2")=h2,
                                   Named("Vb")=vb,
                                   Named("GC")=GC,
