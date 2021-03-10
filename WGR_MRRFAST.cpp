@@ -2,8 +2,10 @@
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-SEXP mrrFast(NumericMatrix Y, NumericMatrix X){
-  int maxit = 200; double tol = 10e-8;  
+SEXP MVFAST(NumericMatrix Y, NumericMatrix X,
+         int maxit = 500, double tol = 10e-8,
+         double MultiplyOffDiag = 0.8,
+         int PrintEverX = 100){
   // Obtain environment containing function
   Rcpp::Environment base("package:base");
   Rcpp::Function solve = base["solve"];  
@@ -15,7 +17,7 @@ SEXP mrrFast(NumericMatrix Y, NumericMatrix X){
     y(_,i) = ifelse(is_na(Y(_,i)),0,Y(_,i));  }
   NumericVector n = colSums(o);  
   // Mu
-  NumericVector mu = colSums(y)/n;
+  NumericVector mu0, mu = colSums(y)/n;
   for(int j=0; j<k; j++){
     y(_,j) = (y(_,j)-mu(j))*o(_,j);  }  
   // Marker variance
@@ -30,7 +32,7 @@ SEXP mrrFast(NumericMatrix Y, NumericMatrix X){
   // Beta, intersept and residuals
   NumericMatrix b(p,k),vb(k,k),rho(k,k);
   NumericVector b0(k),vy(k),ve(k);
-  double b1,lhs,rhs,covs,vb0,lambda;
+  double b1,lhs,rhs,covs,lambda;
   for(int i=0; i<k; i++){for(int j=0; j<k; j++){vb(i,j) = 0;}}
   for(int i=0; i<k; i++){
     e(_,i) = y(_,i)+0;
@@ -38,7 +40,14 @@ SEXP mrrFast(NumericMatrix Y, NumericMatrix X){
     ve(i) = vy(i)*0.5;
     vb(i,i) = ve(i)/MSx(i);
     rho(i,i) = 1;}
-  NumericMatrix iG = solve(vb);  
+  NumericMatrix iG = solve(vb);
+  // Beta tilde
+  NumericMatrix tilde(p,k);
+  for(int i=0; i<p; i++){
+    for(int j=0; j<k; j++){
+      tilde(i,j) =  sum(X(_,i)*y(_,j));
+    }
+  }
   // Convergence control
   NumericMatrix bc(p,k);
   int numit = 0;
@@ -60,38 +69,41 @@ SEXP mrrFast(NumericMatrix Y, NumericMatrix X){
         covs = covs*ve(i);
         lambda = iG(i,i)*ve(i);        
         // Set LHS RHS
-        lhs = xx(j,i) + lambda;
+        lhs = xx(j,i) + lambda + 0.01;
         rhs = sum(e(_,i)*X(_,j)) + xx(j,i)*b0(i) - covs;        
         // Update effects
         b1 = rhs/lhs;
         b(j,i) = b1;        
         // Update residuals
-        //e(_,i) = ifelse( o(_,i)==1, (e(_,i)-X(_,j)*(b1-b0(i))), 0 );
-        e(_,i) = (e(_,i)-X(_,j)*(b1-b0(i)))*o(_,i); }}    
+        e(_,i) = (e(_,i)-X(_,j)*(b1-b0(i)))*o(_,i); }}
+    // Centralize
+    NumericVector mu0 = colSums(e)/n;
+    for(int j=0; j<k; j++){
+      e(_,j) = (e(_,j)-mu0(j))*o(_,j);  }
+    mu = mu + mu0;
     // Update variance components every few iterations
-    if(numit%3==0){      
-      // Get fitted values
-      for(int i=0; i<n0; i++){
-        for(int j=0; j<k; j++){
-          fit(i,j) = sum(X(i,_)*b(_,j));}}      
+    if(numit%2==0){
       // Residual variance components update
       for(int i=0; i<k; i++){ ve(i) = (sum(e(_,i)*y(_,i)))/(n(i)-1); }      
       // Genetic covariance components update
-      for(int i=0; i<k; i++){
-        for(int j=0; j<k; j++){
-          if(i==j){
-                //vb(i,i) = sum(fit(_,i)*y(_,i))/(n(i)*MSx(i));
-                vb(i,i) = (1.1*vy(i)-ve(i))/MSx(i);
-              }else{
-            if(i>j){
-                vb0 = (sum(fit(_,i)*y(_,j))+sum(fit(_,j)*y(_,i))) / ((n(i)*MSx(i))+(n(j)*MSx(j)));
-                vb(i,j) = vb0; vb(j,i) = vb0;}}}}      
-      // Generalized inverse of G2A_Kernels
+      for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
+        // Diag VC
+        if(i==j){
+          vb(i,j) = (vy(i)-ve(i))/MSx(i);
+        }else{
+          if(i>j){
+            tmp = ( sum(tilde(_,i)*b(_,j)) +sum(tilde(_,j)*b(_,i) )  ) / ((n(i)*MSx(i))+(n(j)*MSx(j)));
+            vb(i,j) = tmp*MultiplyOffDiag;
+            vb(j,i) = vb(i,j);
+          }
+        }}}
       iG = solve(vb);}    
     // Convergence
     ++numit;
+    if(numit % PrintEverX == 0){ Rcout << "Iter: "<< numit << " || Conv: "<< cnv << "\n"; } 
     cnv = sum(abs(bc-b));
-    if( cnv<tol ){break;}}  
+    if( cnv<tol ){break;}
+  }  
   // Fitting the model
   NumericVector h2(k); 
   for(int i=0; i<n0; i++){for(int j=0; j<k; j++){fit(i,j) = sum(X(i,_)*b(_,j))+mu(j);}}
@@ -102,5 +114,4 @@ SEXP mrrFast(NumericMatrix Y, NumericMatrix X){
   // Output
   return List::create(Named("mu")=mu, Named("b")=b,
                       Named("hat")=fit, Named("h2")=h2,
-                      Named("Vb")=vb, Named("GC")=GC,
-                      Named("Ve")=ve);}
+                      Named("GC")=GC);}
