@@ -35,13 +35,15 @@ SEXP MV(NumericMatrix Y,
         int maxit = 500, // maximum number of iterations
         double tol = 10e-10, // convergence criterion
         double SOR = 1.0, // 0.75 is a good value
-        double MultiplyOffDiag = 1.0, // 0.97 is a good value
+        double MultiplyOffDiag = 0.95, // 0.97 is a good value
         double MultiplyDiag = 1.0, // 1.03 is a good value
         double AddToDiag = 0.0, // 0.01 is a good value
         int PrintEveryX = 100, // How often print convergence
+        bool MinOutput = true, // update intercept
         bool TH = true, // compute via Tilde-Hat
         bool UpdateB0 = false, // update intercept
-        bool EigenControl = true){ // Activate XFA
+        bool EigenControl = false){ // Activate XFA
+  
   // Obtain environment containing function
   Rcpp::Environment base("package:base");
   Rcpp::Function solve = base["solve"];
@@ -188,17 +190,17 @@ SEXP MV(NumericMatrix Y,
   // Output lists
   List convergence = List::create(Named("ConvCoef")=StoreConv,
                                   Named("ConvGC")=StoreConvGC,
-                                  Named("ConvVC")=StoreConvVC,
-                                  Named("AddToDiag")=AddToDiag0);
+                                  Named("ConvVC")=StoreConvVC);
   List covariances = List::create(Named("h2")=h2,
                                   Named("Vb")=vb,
                                   Named("GC")=GC,
                                   Named("Ve")=ve,
                                   Named("Vy")=vy,
                                   Named("MSx")=MSx);
-  // Output
-  return List::create(Named("mu")=mu,
-                      Named("b")=b,
-                      Named("hat")=fit,
-                      Named("var")=covariances,
-                      Named("cnv")=convergence);}
+  if(MinOutput){
+    return List::create(Named("mu")=mu,Named("b")=b, Named("hat")=fit,
+                        Named("h2")=h2, Named("GC")=GC); }else{
+    return List::create(Named("mu")=mu, Named("b")=b, Named("hat")=fit,
+                        Named("var")=covariances, Named("cnv")=convergence);}
+
+}
