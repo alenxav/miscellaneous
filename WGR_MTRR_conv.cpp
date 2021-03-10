@@ -38,9 +38,9 @@ SEXP MV(NumericMatrix Y,
         double MultiplyOffDiag = 1.0, // 0.97 is a good value
         double MultiplyDiag = 1.0, // 1.03 is a good value
         double AddToDiag = 0.0, // 0.01 is a good value
-        bool TH = true, // compute via Tilde-Hat
-        bool UpdateB0 = true, // update intercept
         int PrintEveryX = 100, // How often print convergence
+        bool TH = true, // compute via Tilde-Hat
+        bool UpdateB0 = false, // update intercept
         bool EigenControl = true){ // Activate XFA
   // Obtain environment containing function
   Rcpp::Environment base("package:base");
