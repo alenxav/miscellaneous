@@ -134,7 +134,8 @@ SEXP MV(NumericMatrix Y,
       // Calculate co-variances
       for(int i=0; i<k; i++){ for(int j=0; j<k; j++){
         if(i==j){
-          vb(i,j) = (MultiplyDiag*vy(i)-ve(i))/MSx(i) + AddToDiag0(i);
+          tmp = sum(tilde(_,i)*b(_,i)) / (n(i)*MSx(i));
+          vb(i,i) = tmp*MultiplyDiag + AddToDiag0(i);
         }else{
           if(i>j){
             tmp = ( sum(tilde(_,i)*b(_,j)) +sum(tilde(_,j)*b(_,i) )  ) / ((n(i)*MSx(i))+(n(j)*MSx(j)));
