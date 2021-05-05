@@ -1,9 +1,10 @@
-dnn0 = function(y, X,
-               nit=1000, batch=250,
-               RELU=FALSE, Leak=0.1,
-               dropout=0, Lambda=0.1,
-               LrnRate = 1,
-               Nodes1=4, Nodes2=4){
+
+dnn = function(y, X,
+                nit=1000, batch=250,
+                RELU=FALSE, Leak=0.1,
+                dropout=0, Lambda=0.1,
+                LrnRate = 1,
+                Nodes1=4, Nodes2=4){
   # Normalization
   if(is.null(ncol(y))) y = matrix(y)
   muY = colMeans(y,na.rm=T)
@@ -40,8 +41,8 @@ dnn0 = function(y, X,
     e3 = y0-H3; if(anyNA(e3)) e3[is.na(e3)]=0
     e2 = ActFun(e3 %*% t(b3))
     e1 = ActFun(e2 %*% t(b2))
-    # Update coefficients  
-    b1 = b1 + DropOut(t(X0)%*%(e3)-lmb*b1)*(2/n)*rate[1]
+    # Update coefficients
+    b1 = b1 + DropOut(t(X0)%*%(e1)-lmb*b1)*(2/n)*rate[1]
     b2 = b2 + DropOut(t(H1)%*%(e2)-lmb*b2)*(2/n)*rate[2]
     b3 = b3 + DropOut(t(H2)%*%(e3))*(2/n)*rate[3]
     # Store convergence
@@ -61,6 +62,7 @@ predict.smalldnn = function(object,newdata){
 }
 
 
+
 #############################
 # RUN EXAMPLE IN WHEAT DATA #
 ############################
@@ -71,7 +73,7 @@ if(RUN_EXAMPLE){
   
   # Run DNN
   data(wheat,package = 'BGLR')
-  fit = dnn0(wheat.Y,wheat.X)
+  fit = dnn(wheat.Y,wheat.X)
   hat = predict(fit,wheat.X)
   cat('DNN fitness\n')
   print(diag(cor(hat,wheat.Y)))
