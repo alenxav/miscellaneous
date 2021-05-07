@@ -1,12 +1,14 @@
-tlm = function(formula,data,Tukey=F,...){
+tlm = function(formula,data,Tukey=T,...){
+  
+  # Check the variable under evaluation
+  key = gsub(' .+','',as.character(formula)[3])
+  data[[key]] = factor(data[[key]])
+  nl = length(levels(data[[key]]))
   
   # fit the model
   fnew = update(formula,~.-1)
   fit = lm(formula=fnew,data=data)
   
-  key = gsub(' .+','',as.character(formula)[3])
-  nl = length(levels(data[[key]]))
-    
   Y = predict(fit,data,terms=key,type='term')+fit$residuals
   data_new = fit$model
   data_new[['Y']] = Y
@@ -17,11 +19,17 @@ tlm = function(formula,data,Tukey=F,...){
   refit = lm(Y~X-1,data_new)
   cat('overall p-value',c(anova(lm(Y~X-1,data_new))["Pr(>F)"])[[1]][1],'\n')
   tk = TukeyHSD(aov(refit))
-  tt = pairwise.t.test(Y,X,pool.sd=FALSE)
+  
+  # Pool SD if it doesn't work otherwise
+  tt = try(pairwise.t.test(Y,X,pool.sd=F),silent = T)
+  if(class(tt)=="try-error")  tt = pairwise.t.test(Y,X,pool.sd=T)
   
   # mean and sd
   mu = tapply(Y,X,mean)
   std = tapply(Y,X,sd)
+  
+  std[is.na(std)] = mean(std,na.rm = T)
+  
   lwr = mu-std
   upr = mu+std
   COL = rainbow(nl)
@@ -64,4 +72,3 @@ tlm = function(formula,data,Tukey=F,...){
   # Return output
   return(out)
 }
-compiler::cmpfun(tlm)
