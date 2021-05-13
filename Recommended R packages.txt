@@ -1,0 +1,43 @@
+# Function to install R package (if it is not already installed)
+
+check = function(mypkg) if(!is.element(mypkg,installed.packages()[,1])) install.packages(mypkg)
+
+# Basic data manipulation
+
+check('devtools'); check('Matrix'); check('Rcpp'); check('RcppEigen'); check('reshape2');
+check('RcppArmadillo'); check('lme4'); check('SparseM'); check('MatrixModels')
+check('rmarkdown'); check('shiny'); check('dplyr'); check('tidyverse'); check('ggplot2');
+
+# My packages
+
+check('bWGR'); check('NAM'); check('SoyNAM'); 
+
+# Standard mixed model
+
+check('BGLR'); check('INLA'); check('MCMCglmm');
+
+# Cross-language machine learning packages
+
+check('xgboost'); check('keras'); check('h2o');
+
+# Standard machine learning packages
+
+check('glmnet'); check('ranger'); check('pls'); check('gbm'); check('kernlab'); check('party');
+
+# Parallel computing
+
+check('snow'); check('snowfall'); check('foreach'); check('doMC')
+
+# Mixed model and breeding packages
+
+check('AlphaSimR');
+check('spaMM'); check('SpATS');
+check('rrBLUP'); check('adegenet');  check('VIGoR'); check('gdmp');
+check('sommer'); check('EMMREML');  check('MM2LMM');
+check('pedigreemm'); check('MCMCpack'); check('gaston'); check('SAMM')
+check('synbreed'); check('synbreedData'); check('missForest')
+check('GenABEL'); check('agridat'); check('gex');
+check('rAIPACK'); check('RSpectra'); check('ff');
+check('huge'); check('igraph')
+check('installr');
+
