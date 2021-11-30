@@ -131,6 +131,14 @@ e = Y - yHat
 t(e/ve) %*% e / tr(P%*%I)
 ve
 
-# No-P No-C solver
+# No-P No-C solvers for vu
+          
+# Odd solver 1
 sqrt(crossprod(u)/crossprod(crossprod(Z,e))*(ve^2))
-vu
+# Odd solver 2
+sqrt(crossprod(u)/(crossprod(Z%*%u/vu,e/ve)))
+# Odd solver 3
+crossprod(u)/(crossprod(Z%*%u,e/ve))
+
+          
+          
