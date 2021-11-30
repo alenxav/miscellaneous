@@ -131,7 +131,6 @@ e = Y - yHat
 t(e/ve) %*% e / tr(P%*%I)
 ve
 
-
-
-
-
+# No-P No-C solver
+sqrt(crossprod(u)/crossprod(crossprod(Z,e))*(ve^2))
+vu
