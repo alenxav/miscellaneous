@@ -1,8 +1,12 @@
 
+# GWAS function
 QuantGwas = function(y,Z,Tau=0.75){
   
   require(quantreg)
   require(NAM)
+  
+  # Centralize markers
+  Z = apply(Z,2,function(x)x-mean(x))
   
   # Find alpha that maximized REML
   fit0 = suppressWarnings(reml(y,Z=Z))
@@ -14,26 +18,33 @@ QuantGwas = function(y,Z,Tau=0.75){
   gc()
   
   # Absorb random effects
+  X = matrix(1,length(y))
   Wy = c( t(W) %*% y )
+  WX = t(W) %*% X
   WZ = t(W) %*% Z
-
-  fit_NullModel = suppressWarnings(rq(Wy~1,tau=Tau))
   
-  # SMA function
-  gwa_test = function(x){
-    fit_AlternModel = rq(Wy~x,tau=Tau)
-    effect = fit_AlternModel$coefficients[2]
-    stat_test = suppressWarnings(anova(fit_NullModel,fit_AlternModel))
-    pvalue = stat_test$table$pvalue
-    return(c(pvalue=pvalue,effect=effect))
-  }
+  # Fit null statistical model (no marker)
+  fit_NullModel = suppressWarnings(rq(Wy~WX-1,tau=Tau))
   
   # Run GWAS
-  gwas = data.frame(t(apply(WZ,2,gwa_test)))
-  gwas[['logPval']] = -log10(gwas[,1])
+  GWAS = matrix(NA,nrow=ncol(Z),ncol=2,
+                dimnames=list(colnames(Z),c('pvalue','effect')))
+  pb = txtProgressBar(style = 3)
+  for(j in 1:ncol(Z)){
+    x = WZ[,j]
+    fit_AlternModel = rq(Wy~WX+x-1,tau=Tau)
+    effect = fit_AlternModel$coefficients[2]
+    stat_test = suppressWarnings(anova(fit_NullModel,fit_AlternModel,se="iid"))
+    pvalue = stat_test$table$pvalue
+    GWAS[j,] = c(pvalue,effect)
+    setTxtProgressBar(pb, j/ncol(Z))
+  }
+  close(pb)
+  GWAS = data.frame(GWAS)
+  GWAS[['logPval']] = -log10(GWAS$pvalue)
   
   # Output
-  return(gwas)
+  return(GWAS)
   
 }
 
