@@ -1,144 +1,152 @@
-require(bWGR)
-data(tpod)
+
+# Get some data
 tr = function(x) sum(diag(x))
-Y = sqrt(y); rm(y)
+data(met,package='NAM')
+Obs$Sp = with(Obs,NAM::SPC(YLD,Block,Row,Col,4,4))
+Obs$Block = factor(Obs$Block)
+plot(Obs$Sp,Obs$YLD)
+Gen = data.matrix(Gen[grep('-05|-15',rownames(Gen)),])
+Obs = droplevels(Obs[grep('-05|-15',Obs$ID),])
+Gen = Gen[,apply(Gen,2,var)>0.1]
+dim(Gen)
+dim(Obs)
 
-X = model.matrix(~factor(fam)-1)
-Z = apply(gen,2,function(x) x-mean(x))/sqrt(ncol(gen))
-h0 = NAM::reml(Y,X,Z)
+# Genomic Relationship Matrix
+N = apply(Gen,2,function(x)x-mean(x))
+A = tcrossprod(N)
+A = A/mean(diag(A))
+diag(A) = diag(A)+0.01 # Stabilize GRM
+A = A/mean(diag(A))
+iA = solve(A)
 
-b = h0$Fixed[,1]
-u = h0$EBV
-g = Z %*% u
+# Design matrices
+y = Obs$YLD
+X = model.matrix(~Block+Year:Sp-1,Obs)
+Z = model.matrix(~ID-1,Obs)
 
-n = nrow(Z)
-q = ncol(Z)
+# Constants
+n = length(y) # number of obs
+q = ncol(Z) # levels of Z
+rX = ncol(X) # rank of X
 
-vu = h0$VC$Vg
-ve = h0$VC$Ve
+# Starting values for variance components
+b = qr.solve(X,y)
+u = rep(0,q)
+
+# Starting values for variance components
+vy0 = c(crossprod(y-X%*%b)/(n-rX))
+vu = 0.25*vy0
+ve = 0.75*vy0
+vc = c(vu=vu,ve=ve)
+
+# Variance component matrices
 I = diag(n)
-G = diag(q)*vu
-iG = solve(G)
 R = I*ve
+G = A*vu
+iG = solve(G)
 iR = solve(I*ve)
 V = Z%*%G%*%t(Z) + R
 iV = solve(V)  
-Sigma = Matrix::bdiag(diag(0,2),iG)
 
-
+# Mixed model equation matrices
+Sigma = Matrix::bdiag(diag(0,rX),iG)
 W = cbind(X,Z)
 C = t(W) %*% iR %*% W + Sigma
 iC = solve(C)
+r = t(W) %*% iR %*% y
 
-C22 = iC[-c(1:2),-c(1:2)]
+# Coefficients
+g = iC %*% r
+b = g[1:rX]
+u = g[-c(1:rX)]
+
+C22 = iC[-c(1:rX),-c(1:rX)]
 C22 = as.matrix(C22)
-
 S = I - X %*% solve( t(X)%*%X ) %*% t(X)
-H = W %*% iC %*% t(W) %*% iR
-
+M = I - X %*% solve( t(X) %*% iV %*%X ) %*% t(X) %*% iV
 P = iV - iV %*% X %*% solve( t(X)%*%iV%*%X ) %*% t(X) %*% iV
-plot(I-H,P*ve)
-plot(iR%*%(I-H),P)
+# Also # P = iV %*% M
+# Also # H = iR %*% (I - W %*% iC %*% t(W) %*% iR)
 
-P2 = S%*%iV%*%S
+VarGhat = G %*% t(Z) %*% iV %*% Z %*% G
+VarGhat2 = G - C22
+plot(diag(VarGhat),diag(VarGhat2))
 
+# Other ways to get BLUPs
+u2 = G %*% t(Z) %*% P %*% y
+u3 = solve( t(Z)%*%iR%*%Z + iG , t(Z)%*%iR%*%c(y-X%*%b) )
+plot(data.frame(u,u2,u3))
 
-YY = tcrossprod(S%*%Y)
-diag(YY) = diag(YY)+0.0001
-iYY = solve(YY)
-
-VarG = G %*% t(Z) %*% iV %*% Z %*% G
-VarG2 = G %*% t(Z) %*% iYY %*% Z %*% G
-
-plot(diag(VarG2),diag(VarG))
-
-
-u2 = G %*% t(Z) %*% P %*% Y
-plot(u2,u)
-
+# Null space projection
 yHat = X%*%b + Z%*%u
-plot(P%*%Y*ve,Y-yHat)
+plot(P%*%y*ve,y-yHat)
 
+############
+# Check VC #
+############
 
-# check the use of iV X
-vx = iV %*% X
-vx2 = (iR - iR %*% Z %*% solve( t(Z) %*% iR %*% Z + iG ) %*% t(Z) %*% iR ) %*% X
-vx3 = iR %*% X - iR %*% Z %*% solve( t(Z) %*% iR %*% Z + iG ) %*% t(Z) %*% iR  %*% X
-
-# check VC
-
-# MIVQUE
-Vi = tcrossprod(Z)
-ss = t(Y) %*% P %*% Vi %*% P %*% Y
-df = tr( P %*% Vi )# %*% P %*% Vi )
-ss/df
-
-
-# MIVQUE for both VCs
-solve(a=matrix(c(
-  tr( P %*% Vi %*% P %*% Vi ),
-  tr( P %*% Vi %*% P %*% I ),
-  tr( P %*% I %*% P %*% Vi ),
-  tr( P %*% I %*% P %*% I )),2,2),
-      b=c(t(Y) %*% P %*% Vi %*% P %*% Y,
-             t(Y) %*% P %*%  I %*% P %*% Y))
-
+Vi = Z %*% A %*% t(Z)
 
 # EM
-ss = crossprod(u) + tr(C22)
+ss = t(u) %*% iA %*% u + tr(iA%*%C22)
 df = q
 ss/df
-vu
-
-e = Y - yHat
-ss = crossprod(Y,e)
-df = tr(S)
+e = y - yHat
+ss = crossprod(y,e)
+df = tr(S) #  = n-rX
 ss/df
-ve
 
+# Accelerated EM2
+ss = t(u) %*% iA %*% u
+df = q - tr(iA%*%C22)/vu
+ss/df
 
 # Schaeffer's
-ss = t(Y) %*% S %*% Z %*% u
+ss = t(y) %*% S %*% Z %*% u
 df = tr( S %*% Vi )
 ss/df
-vu
-ss = t(Y) %*% S %*% e
+ss = t(y) %*% S %*% e
 df = tr( S )
 ss/df
-ve
 
-# AI
-SecDer = t(Y) %*% P %*% Vi %*% P %*% Vi %*% P %*% Y
-FirDer = -0.5 * ( q/vu - crossprod(u)/(vu^2) - tr(C22)/(vu^2) )
-vu + FirDer / SecDer
-vu
-SecDer = t(Y) %*% P %*% I %*% P %*% I %*% P %*% Y
-FirDer = -0.5 * ( tr(S)/ve - crossprod(e)/(ve^2) - 1/ve * (q-tr(C22)/(vu))  )
-ve + FirDer / SecDer
-ve
+# AI  via V
+SecDer1 = matrix(c(
+  t(y) %*% P %*% Vi %*% P %*% Vi %*% P %*% y, t(y) %*% P %*% Vi %*% P %*% I %*% P %*% y,
+  t(y) %*% P %*% I %*% P %*% Vi %*% P %*% y, t(y) %*% P %*% I %*% P %*% I %*% P %*% y
+),2,2)
+FirDer1 = c( vu = tr(P %*% Vi) - t(y) %*% P %*% Vi %*% P %*% y ,
+             ve = tr(P %*% I) - t(y) %*% P %*% I %*% P %*% y )
+vc - solve(SecDer1,FirDer1)
 
-# Direct calculation
-sqrt(crossprod(u)/tr(P%*%Vi))
-vu
-sqrt(crossprod(e)/tr(P%*%I))
-ve
+# AI via C
+B = cbind( vu = Vi %*% P %*% y, ve = I %*% P %*% y)
+MB = chol(rbind(cbind(as.matrix(C),t(W) %*% iR %*% B),
+                cbind( t(B) %*% iR %*% W, t(B) %*% iR %*% B) ))
+LB = MB[(ncol(MB)-1):ncol(MB),(ncol(MB)-1):ncol(MB)]
+SecDer2 = crossprod(LB)
+FirDer2 = c( vu = ( q/vu - (t(u)%*%iA%*%u)/(vu^2) - tr(iA%*%C22)/(vu^2) ),
+             ve = ( (n-rX)/ve - (1/ve)*(q-tr(iA%*%C22)/(vu))) - crossprod(e)/(ve^2) )
+vc - solve(SecDer2,FirDer2)
 
-# Half derivation
-e = Y - yHat
-t(e/ve) %*% Z %*% u / tr(P%*%Vi)
-vu
-e = Y - yHat
-t(e/ve) %*% e / tr(P%*%I)
-ve
+# MIVQUE
+lhs = matrix(c(
+  tr( P %*% Vi %*% P %*% Vi ), tr( P %*% Vi %*% P %*% I ),
+  tr( P %*% I %*% P %*% Vi ),  tr( P %*% I %*% P %*% I ) ),2,2)
+rhs = c(t(y) %*% P %*% Vi %*% P %*% y,
+        t(y) %*% P %*%  I %*% P %*% y)
+solve(lhs,rhs)
 
-# No-P No-C solvers for vu
-          
-# Odd solver 1
-sqrt(crossprod(u)/crossprod(crossprod(Z,e))*(ve^2))
-# Odd solver 2
-sqrt(crossprod(u)/(crossprod(Z%*%u/vu,e/ve)))
-# Odd solver 3
-crossprod(u)/(crossprod(Z%*%u,e/ve))
+# Gibbs sampler
+df0 = 5
+Su = vu
+Se = ve
+# Samples of VC
+(t(u) %*% iA %*% u + Su*df0 ) / rchisq(1,q+df0)
+(t(e) %*% e + Se*df0 ) / rchisq(1,n+df0)
+# Sample coefficients
+g0 = g*1
+NAM::SAMP(as.matrix(C),g,r,rX+q,ve)
+plot(g,g0) # before and after sampling
 
-          
-          
+
+
