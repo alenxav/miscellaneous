@@ -1,4 +1,3 @@
-
 # Get some data
 tr = function(x) sum(diag(x))
 data(met,package='NAM')
@@ -75,17 +74,21 @@ plot(diag(VarGhat),diag(VarGhat2))
 # Other ways to get BLUPs
 u2 = G %*% t(Z) %*% P %*% y
 u3 = solve( t(Z)%*%iR%*%Z + iG , t(Z)%*%iR%*%c(y-X%*%b) )
-plot(data.frame(u,u2,u3))
+u4 = solve( t(Z)%*%Z + iA*(ve/vu) , t(Z)%*% c(y-X%*%b) )
+plot(data.frame(u,u2,u3,u4))
 
 # Null space projection
 yHat = X%*%b + Z%*%u
-plot(P%*%y*ve,y-yHat)
+e = y - yHat
+plot(P%*%y*ve,e)
 
 ############
 # Check VC #
 ############
 
-Vi = Z %*% A %*% t(Z)
+# First derivative V/sigma2i
+ZAZ = Z %*% A %*% t(Z) # V/sigma2u
+I # V/sigma2e
 
 # EM
 ss = t(u) %*% iA %*% u + tr(iA%*%C22)
@@ -102,24 +105,30 @@ df = q - tr(iA%*%C22)/vu
 ss/df
 
 # Schaeffer's
-ss = t(y) %*% S %*% Z %*% u
-df = tr( S %*% Vi )
+ss = t(y) %*% S %*% Z %*% u # ySZ computed once
+df = tr( S %*% ZAZ )
 ss/df
-ss = t(y) %*% S %*% e
-df = tr( S )
+ss = t(y) %*% S %*% e # yS computed one
+df = tr( S ) # = n-rK
 ss/df
 
+
+
 # AI  via V
+
 SecDer1 = matrix(c(
-  t(y) %*% P %*% Vi %*% P %*% Vi %*% P %*% y, t(y) %*% P %*% Vi %*% P %*% I %*% P %*% y,
-  t(y) %*% P %*% I %*% P %*% Vi %*% P %*% y, t(y) %*% P %*% I %*% P %*% I %*% P %*% y
+  t(y) %*% P %*% ZAZ %*% P %*% ZAZ %*% P %*% y, t(y) %*% P %*% ZAZ %*% P %*% I %*% P %*% y,
+  t(y) %*% P %*% I %*% P %*% ZAZ %*% P %*% y, t(y) %*% P %*% I %*% P %*% I %*% P %*% y
 ),2,2)
-FirDer1 = c( vu = tr(P %*% Vi) - t(y) %*% P %*% Vi %*% P %*% y ,
+FirDer1 = c( vu = tr(P %*% ZAZ) - t(y) %*% P %*% ZAZ %*% P %*% y ,
              ve = tr(P %*% I) - t(y) %*% P %*% I %*% P %*% y )
 vc - solve(SecDer1,FirDer1)
 
 # AI via C
-B = cbind( vu = Vi %*% P %*% y, ve = I %*% P %*% y)
+
+#B = cbind( vu = ZAZ %*% P %*% y, ve = I %*% P %*% y)
+B = cbind( vu = Z %*% u / vu, ve = e / ve )
+
 MB = chol(rbind(cbind(as.matrix(C),t(W) %*% iR %*% B),
                 cbind( t(B) %*% iR %*% W, t(B) %*% iR %*% B) ))
 LB = MB[(ncol(MB)-1):ncol(MB),(ncol(MB)-1):ncol(MB)]
@@ -130,9 +139,9 @@ vc - solve(SecDer2,FirDer2)
 
 # MIVQUE
 lhs = matrix(c(
-  tr( P %*% Vi %*% P %*% Vi ), tr( P %*% Vi %*% P %*% I ),
-  tr( P %*% I %*% P %*% Vi ),  tr( P %*% I %*% P %*% I ) ),2,2)
-rhs = c(t(y) %*% P %*% Vi %*% P %*% y,
+  tr( P %*% ZAZ %*% P %*% ZAZ ), tr( P %*% ZAZ %*% P %*% I ),
+  tr( P %*% I %*% P %*% ZAZ ),  tr( P %*% I %*% P %*% I ) ),2,2)
+rhs = c(t(y) %*% P %*% ZAZ %*% P %*% y,
         t(y) %*% P %*%  I %*% P %*% y)
 solve(lhs,rhs)
 
@@ -147,6 +156,4 @@ Se = ve
 g0 = g*1
 NAM::SAMP(as.matrix(C),g,r,rX+q,ve)
 plot(g,g0) # before and after sampling
-
-
 
