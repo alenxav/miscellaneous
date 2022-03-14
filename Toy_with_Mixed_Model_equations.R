@@ -67,9 +67,14 @@ P = iV - iV %*% X %*% solve( t(X)%*%iV%*%X ) %*% t(X) %*% iV
 # Also # P = iV %*% M
 # Also # H = iR %*% (I - W %*% iC %*% t(W) %*% iR)
 
-VarGhat = G %*% t(Z) %*% iV %*% Z %*% G
-VarGhat2 = G - C22
-plot(diag(VarGhat),diag(VarGhat2))
+# Variance of u hat
+VarUhat = G %*% t(Z) %*% P %*% Z %*% G
+VarUhat2 = G - C22
+plot(data.frame(diag(VarUhat),diag(VarUhat2)))
+# Reliability
+rel1 = sqrt(diag(diag(q)-C22 %*% iG))
+rel2 = sqrt(diag( t(Z) %*% iV %*% Z %*% G ))
+plot(rel1,rel2)
 
 # Other ways to get BLUPs
 u2 = G %*% t(Z) %*% P %*% y
@@ -96,7 +101,7 @@ df = q
 ss/df
 e = y - yHat
 ss = crossprod(y,e)
-df = tr(M) #  = n-rX
+df = tr(S) #  = n-rX
 ss/df
 
 # Accelerated EM
@@ -112,7 +117,10 @@ ss = t(y) %*% S %*% e # yS computed one
 df = tr( S ) # = n-rK
 ss/df
 
+
+
 # AI  via V
+
 SecDer1 = matrix(c(
   t(y) %*% P %*% ZAZ %*% P %*% ZAZ %*% P %*% y, t(y) %*% P %*% ZAZ %*% P %*% I %*% P %*% y,
   t(y) %*% P %*% I %*% P %*% ZAZ %*% P %*% y, t(y) %*% P %*% I %*% P %*% I %*% P %*% y
@@ -122,8 +130,10 @@ FirDer1 = c( vu = tr(P %*% ZAZ) - t(y) %*% P %*% ZAZ %*% P %*% y ,
 vc - solve(SecDer1,FirDer1)
 
 # AI via C
+
+#B = cbind( vu = ZAZ %*% P %*% y, ve = I %*% P %*% y)
 B = cbind( vu = Z %*% u / vu, ve = e / ve )
-# Also B = cbind( vu = ZAZ %*% P %*% y, ve = I %*% P %*% y)
+
 MB = chol(rbind(cbind(as.matrix(C),t(W) %*% iR %*% B),
                 cbind( t(B) %*% iR %*% W, t(B) %*% iR %*% B) ))
 LB = MB[(ncol(MB)-1):ncol(MB),(ncol(MB)-1):ncol(MB)]
@@ -151,4 +161,8 @@ Se = ve
 g0 = g*1
 NAM::SAMP(as.matrix(C),g,r,rX+q,ve)
 plot(g,g0) # before and after sampling
+
+# Sample of the j-th coefficient
+j = 1
+rnorm(1,mean=c(r[j]-C[j,-j]%*%g[-j])/C[1,1],sd=sqrt(C[1,1])  )
 
