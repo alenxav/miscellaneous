@@ -96,10 +96,10 @@ df = q
 ss/df
 e = y - yHat
 ss = crossprod(y,e)
-df = tr(S) #  = n-rX
+df = tr(M) #  = n-rX
 ss/df
 
-# Accelerated EM2
+# Accelerated EM
 ss = t(u) %*% iA %*% u
 df = q - tr(iA%*%C22)/vu
 ss/df
@@ -112,10 +112,7 @@ ss = t(y) %*% S %*% e # yS computed one
 df = tr( S ) # = n-rK
 ss/df
 
-
-
 # AI  via V
-
 SecDer1 = matrix(c(
   t(y) %*% P %*% ZAZ %*% P %*% ZAZ %*% P %*% y, t(y) %*% P %*% ZAZ %*% P %*% I %*% P %*% y,
   t(y) %*% P %*% I %*% P %*% ZAZ %*% P %*% y, t(y) %*% P %*% I %*% P %*% I %*% P %*% y
@@ -125,10 +122,8 @@ FirDer1 = c( vu = tr(P %*% ZAZ) - t(y) %*% P %*% ZAZ %*% P %*% y ,
 vc - solve(SecDer1,FirDer1)
 
 # AI via C
-
-#B = cbind( vu = ZAZ %*% P %*% y, ve = I %*% P %*% y)
 B = cbind( vu = Z %*% u / vu, ve = e / ve )
-
+# Also B = cbind( vu = ZAZ %*% P %*% y, ve = I %*% P %*% y)
 MB = chol(rbind(cbind(as.matrix(C),t(W) %*% iR %*% B),
                 cbind( t(B) %*% iR %*% W, t(B) %*% iR %*% B) ))
 LB = MB[(ncol(MB)-1):ncol(MB),(ncol(MB)-1):ncol(MB)]
