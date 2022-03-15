@@ -30,13 +30,12 @@ rX = ncol(X) # rank of X
 
 # Starting values for variance components
 b = qr.solve(X,y)
-u = rep(0,q)
-
-# Starting values for variance components
 vy0 = c(crossprod(y-X%*%b)/(n-rX))
 vu = 0.25*vy0
 ve = 0.75*vy0
 vc = c(vu=vu,ve=ve)
+print(vc)
+
 
 # Variance component matrices
 I = diag(n)
@@ -44,7 +43,8 @@ R = I*ve
 G = A*vu
 iG = solve(G)
 iR = solve(I*ve)
-V = Z%*%G%*%t(Z) + R
+ZAZ = Z %*% A %*% t(Z)
+V = ZAZ*vu + R
 iV = solve(V)  
 
 # Mixed model equation matrices
@@ -59,6 +59,7 @@ g = iC %*% r
 b = g[1:rX]
 u = g[-c(1:rX)]
 
+
 C22 = iC[-c(1:rX),-c(1:rX)]
 C22 = as.matrix(C22)
 S = I - X %*% solve( t(X)%*%X ) %*% t(X)
@@ -70,7 +71,7 @@ P = iV - iV %*% X %*% solve( t(X)%*%iV%*%X ) %*% t(X) %*% iV
 # Variance of u hat
 VarUhat = G %*% t(Z) %*% P %*% Z %*% G
 VarUhat2 = G - C22
-plot(data.frame(diag(VarUhat),diag(VarUhat2)))
+plot(diag(VarUhat),diag(VarUhat2))
 # Reliability
 rel1 = sqrt(diag(diag(q)-C22 %*% iG))
 rel2 = sqrt(diag( t(Z) %*% iV %*% Z %*% G ))
@@ -91,11 +92,8 @@ plot(P%*%y*ve,e)
 # Check VC #
 ############
 
-# First derivative V/sigma2i
-ZAZ = Z %*% A %*% t(Z) # V/sigma2u
-I # V/sigma2e
-
 # EM
+tr = function(x) sum(diag(x))
 ss = t(u) %*% iA %*% u + tr(iA%*%C22)
 df = q
 ss/df
@@ -109,15 +107,21 @@ ss = t(u) %*% iA %*% u
 df = q - tr(iA%*%C22)/vu
 ss/df
 
-# Schaeffer's
+# Schaeffer's Pseudo-Expectation
 ss = t(y) %*% S %*% Z %*% u # ySZ computed once
-df = tr( S %*% ZAZ )
+df = tr( S %*% ZAZ ) # computed once
 ss/df
-ss = t(y) %*% S %*% e # yS computed one
+ss = t(y) %*% S %*% e # yS computed once
 df = tr( S ) # = n-rK
 ss/df
 
-
+# MIVQUE
+lhs = matrix(c(
+  tr( P %*% ZAZ %*% P %*% ZAZ ), tr( P %*% ZAZ %*% P %*% I ),
+  tr( P %*% I %*% P %*% ZAZ ),  tr( P %*% I %*% P %*% I ) ),2,2)
+rhs = c(t(y) %*% P %*% ZAZ %*% P %*% y,
+        t(y) %*% P %*%  I %*% P %*% y)
+solve(lhs,rhs)
 
 # AI  via V
 
@@ -134,35 +138,30 @@ vc - solve(SecDer1,FirDer1)
 #B = cbind( vu = ZAZ %*% P %*% y, ve = I %*% P %*% y)
 B = cbind( vu = Z %*% u / vu, ve = e / ve )
 
-MB = chol(rbind(cbind(as.matrix(C),t(W) %*% iR %*% B),
+MB = chol(rbind(cbind(as.matrix(C),       t(W) %*% iR %*% B),
                 cbind( t(B) %*% iR %*% W, t(B) %*% iR %*% B) ))
+
 LB = MB[(ncol(MB)-1):ncol(MB),(ncol(MB)-1):ncol(MB)]
 SecDer2 = crossprod(LB)
 FirDer2 = c( vu = ( q/vu - (t(u)%*%iA%*%u)/(vu^2) - tr(iA%*%C22)/(vu^2) ),
              ve = ( (n-rX)/ve - (1/ve)*(q-tr(iA%*%C22)/(vu))) - crossprod(e)/(ve^2) )
 vc - solve(SecDer2,FirDer2)
 
-# MIVQUE
-lhs = matrix(c(
-  tr( P %*% ZAZ %*% P %*% ZAZ ), tr( P %*% ZAZ %*% P %*% I ),
-  tr( P %*% I %*% P %*% ZAZ ),  tr( P %*% I %*% P %*% I ) ),2,2)
-rhs = c(t(y) %*% P %*% ZAZ %*% P %*% y,
-        t(y) %*% P %*%  I %*% P %*% y)
-solve(lhs,rhs)
+
+
 
 # Gibbs sampler
+
+# Priors
 df0 = 5
 Su = vu
 Se = ve
+
 # Samples of VC
 (t(u) %*% iA %*% u + Su*df0 ) / rchisq(1,q+df0)
 (t(e) %*% e + Se*df0 ) / rchisq(1,n+df0)
-# Sample coefficients
-g0 = g*1
-NAM::SAMP(as.matrix(C),g,r,rX+q,ve)
-plot(g,g0) # before and after sampling
 
-# Sample of the j-th coefficient
-j = 1
-rnorm(1,mean=c(r[j]-C[j,-j]%*%g[-j])/C[1,1],sd=sqrt(C[1,1])  )
+# Sample coefficients
+g_samp = sapply(1:(rX+q), function(j) rnorm(1,mean=c(r[j]-C[j,-j]%*%g[-j])/C[j,j],sd=sqrt(1/C[j,j])))
+plot(g,g_samp)
 
