@@ -59,7 +59,7 @@ g = iC %*% r
 b = g[1:rX]
 u = g[-c(1:rX)]
 
-
+# Other important matrices
 C22 = iC[-c(1:rX),-c(1:rX)]
 C22 = as.matrix(C22)
 S = I - X %*% solve( t(X)%*%X ) %*% t(X)
@@ -78,10 +78,11 @@ rel2 = sqrt(diag( t(Z) %*% iV %*% Z %*% G ))
 plot(rel1,rel2)
 
 # Other ways to get BLUPs
+u1 = g[-c(1:rX)]
 u2 = G %*% t(Z) %*% P %*% y
 u3 = solve( t(Z)%*%iR%*%Z + iG , t(Z)%*%iR%*%c(y-X%*%b) )
 u4 = solve( t(Z)%*%Z + iA*(ve/vu) , t(Z)%*% c(y-X%*%b) )
-plot(data.frame(u,u2,u3,u4))
+plot(data.frame(u1,u2,u3,u4))
 
 # Null space projection
 yHat = X%*%b + Z%*%u
@@ -93,27 +94,23 @@ plot(P%*%y*ve,e)
 ############
 
 # EM
-tr = function(x) sum(diag(x))
-ss = t(u) %*% iA %*% u + tr(iA%*%C22)
-df = q
-ss/df
-e = y - yHat
-ss = crossprod(y,e)
-df = tr(S) #  = n-rX
-ss/df
-
-# Accelerated EM
-ss = t(u) %*% iA %*% u
-df = q - tr(iA%*%C22)/vu
-ss/df
+# Var e
+Ve = c(crossprod(y,e)) / (n-rX)
+# Var U
+Vu = c(t(u) %*% iA %*% u + tr(iA%*%C22)) / q
+# Var U (faster converging alternative)
+Vu2 = c(t(u) %*% iA %*% u) / ( q - tr(iA%*%C22)/vu )
+# Check
+print(c(Ve=Ve, Vu=Vu, Vu2=Vu2))
 
 # Schaeffer's Pseudo-Expectation
-ss = t(y) %*% S %*% Z %*% u # ySZ computed once
-df = tr( S %*% ZAZ ) # computed once
-ss/df
-ss = t(y) %*% S %*% e # yS computed once
-df = tr( S ) # = n-rK
-ss/df
+Sy = S %*% y
+ZSy = t(Z) %*% Sy
+trSZAZ = tr( S %*% ZAZ ) # tr(ZS'Z) if A=I
+# Var U
+c(u %*% ZSy) / trSZAZ
+# Var E
+c(t(e) %*% Sy) / (n-rX)
 
 # MIVQUE
 lhs = matrix(c(
