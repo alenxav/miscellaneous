@@ -22,31 +22,6 @@ dnn = function(y, X,
   n1 = Nodes1; n2 = Nodes2;
   lmb = Lambda; rate = LrnRate/c(p,n1,n2)
   # Starting weights
-  b1 = matrix(rnorm(n1*p,0,1/p),p,n1)
-
-dnn = function(y, X,
-                nit=1000, batch=250,
-                RELU=FALSE, Leak=0.1,
-                dropout=0, Lambda=0.1,
-                LrnRate = 1,
-                Nodes1=4, Nodes2=4){
-  # Normalization
-  if(is.null(ncol(y))) y = matrix(y)
-  muY = colMeans(y,na.rm=T)
-  sdY = apply(y,2,sd,na.rm=T)
-  y = apply(y,2,scale)
-  # DNN functions
-  ActFun = tanh
-  if(RELU) ActFun = function(x){x[x<0]=x[x<0]*Leak;return(x)}
-  DropOut = function(x,prc=dropout){x[sample(length(x),length(x)*prc)];return(x)}
-  # Dimensions
-  n = nrow(X)
-  p = ncol(X)
-  k = ncol(y)
-  # Learning settings
-  n1 = Nodes1; n2 = Nodes2;
-  lmb = Lambda; rate = LrnRate/c(p,n1,n2)
-  # Starting weights
   E1 = b1 = matrix(rnorm(n1*p,0,1/p),p,n1)
   E2 = b2 = matrix(rnorm(n1*n2,0,1/n1),n1,n2)
   E3 = b3 = matrix(rnorm(n2,0,1/n2),n2,k)
