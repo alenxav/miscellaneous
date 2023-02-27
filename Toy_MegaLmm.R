@@ -8,7 +8,7 @@ Y = h0$Y
 Y[sample(length(Y),length(Y)*0.2)] = NA
 
 # MegaLMM function
-MegaLmm = function(Y,Z){
+MegaLmm = function(Y,Z,...){
   require(bWGR)
   k = ncol(Y)
   cat('Step 1\n')
@@ -18,7 +18,8 @@ MegaLmm = function(Y,Z){
     w = which(!is.na(y))
     yy = y[w]
     xx = Z[w,]
-    beta = emML(yy,xx)
+    #beta = emML(yy,xx)
+    beta = MRR3(matrix(yy),xx,...)
     setTxtProgressBar(pb, i/k)
     return( c(beta$b) )})
   close(pb)
@@ -33,9 +34,10 @@ MegaLmm = function(Y,Z){
     v = apply(zz,2,sd)
     zz = apply(zz,2,scale)
     ww = cbind(zz,xx)
-    beta = emML(yy,ww)
+    #beta = emML(yy,ww)
+    beta = MRR3(matrix(yy),ww,...)
     w = 1:(k-1)
-    betaf = c(UvBeta[,w] %*% (beta$b[w]*v)) + beta$b[-w]
+    betaf = c(UvBeta[,w] %*% (c(beta$b)[w]*v)) + c(beta$b)[-w]
     setTxtProgressBar(pb, i/k)
     return(betaf)})
   close(pb)
@@ -43,7 +45,7 @@ MegaLmm = function(Y,Z){
 }
 
 # Benchmark
-fit = MegaLmm(Y,Z)
+system.time(fit <- MegaLmm(Y,Z,NLfactor=1))[3]
 Hat = lapply(fit, function(x) Z%*%x )
 Hat$MvViaGS = MRR3(Y,Z)$hat
 acc = sapply(Hat, function(x) diag(cor(x,h0$tbv)) )
