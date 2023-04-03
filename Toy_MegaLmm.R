@@ -38,7 +38,7 @@ MegaLmm = function(Y,Z,TOI=NULL,...){
     beta = MRR3(matrix(yy),ww,...)
     q = 1:k
     betaf = c(UvBeta[,q] %*% (c(beta$b)[q]*v)) + c(beta$b)[-q]
-    setTxtProgressBar(pb, i/k)
+    setTxtProgressBar(pb, i/kk)
     return(betaf)})
   close(pb)
   # Prepare output
