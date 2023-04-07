@@ -1,23 +1,24 @@
-#include <Rcpp.h>
-using namespace Rcpp;
+// [[Rcpp::plugins(openmp)]]
+// [[Rcpp::depends(RcppEigen)]]
+#include <RcppEigen.h>
+#include <iostream>
+
 // [[Rcpp::export]]
-NumericMatrix ArcCosKernel(NumericMatrix X){
-  int n = X.nrow(), p = X.ncol();
-  NumericMatrix K(n,n);
-  NumericVector xx(p), DiagZZ(p), DiagK(n); double zz, alpha,theta,tmp;
-  for(int i=0; i<p; i++){ xx[i] = mean(X(_,i)); }
-  for(int j=0; j<n; j++){ DiagZZ[j] = sum( (X(j,_)-xx)*(X(j,_)-xx) ) + 0.1;}
-  for(int i=0; i<n; i++){
-        zz = sum((X(i,_)-xx)*(X(i,_)-xx));
-        theta = acos( zz  / sqrt(DiagZZ[i]*DiagZZ[i]) );
-        tmp = (DiagZZ[i]*DiagZZ[i])/3.1416 * (sin(theta)+(3.1416-theta)*cos(theta));
-        DiagK(i) = tmp;}
-  alpha = 1/mean(DiagK);
-  for(int i=0; i<n; i++){
-    for(int j=0; j<n; j++){
-      if(i==j ){ K(i,i) = DiagK(i)*alpha; }else if(i<j ){
-          zz = sum((X(i,_)-xx)*(X(j,_)-xx));
-          theta = acos( zz  / sqrt(DiagZZ[i]*DiagZZ[j]) );
-          tmp = alpha * (DiagZZ[i]*DiagZZ[j])/3.1416 * (sin(theta)+(3.1416-theta)*cos(theta));
-          K(i,j) = tmp; K(j,i) = tmp; }}}
-  return K;}
+Eigen::MatrixXd ArcCosK(Eigen::MatrixXd X, bool centralizeX = true, int cores = 2){
+  // cseweb.ucsd.edu/~saul/papers/nips09_kernel.pdf
+  Eigen::setNbThreads(cores); int p = X.cols(), n = X.rows(); 
+  double tmp, Npi=3.1416, theta, J1, Kij, Norm;
+  if(centralizeX){
+    for(int i=0; i<p; i++){
+      tmp = (X.col(i).array()).mean();
+      X.col(i) = X.col(i).array()-tmp;}}
+  Eigen::MatrixXd XXp = X*X.transpose();
+  tmp = 1/(XXp.diagonal().mean()); XXp *= tmp;
+  Eigen::VectorXd DiagXXp = XXp.diagonal().array();
+  for(int i=0; i<n; i++){ for(int j=0; j<n; j++){ if(i>=j){ 
+    Norm = sqrt(DiagXXp(i)*DiagXXp(j));
+    theta = acos( XXp(i,j)/Norm);
+    J1 = sin(theta) + (Npi-theta)*cos(theta);
+    Kij = Norm/Npi*J1;
+    XXp(i,j) = Kij*1.0; XXp(j,i) = Kij*1.0;}}}
+  return XXp;}
