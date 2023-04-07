@@ -1,22 +1,14 @@
-#include <Rcpp.h>
-using namespace Rcpp;
+// [[Rcpp::plugins(openmp)]]
+// [[Rcpp::depends(RcppEigen)]]
+#include <RcppEigen.h>
+
 // [[Rcpp::export]]
-NumericMatrix GRM(NumericMatrix X, bool Code012 = false){
-  int n = X.nrow(), p = X.ncol();
-  NumericMatrix K(n,n); NumericVector xx(p); double zz, Sum2pq=0.0;
-  for(int i=0; i<p; i++){ xx[i] = mean(X(_,i)); }
-  if(Code012){
-    for(int i=0; i<p; i++){ Sum2pq = Sum2pq + xx[i]*xx[i]/2;}
-  }else{
-    for(int i=0; i<p; i++){Sum2pq = Sum2pq + var(X(_,i));}
-  }
-  for(int i=0; i<n; i++){
-    for(int j=0; j<n; j++){
-      if(i<=j ){
-        zz = sum( (X(i,_)-xx)*(X(j,_)-xx) );
-        K(i,j)=zz; K(j,i)=zz;
-      }
-    }
-  }
-  return K/Sum2pq;
-}
+Eigen::MatrixXd GRM(Eigen::MatrixXd X, bool centralizeZ = true, int cores = 2){
+  Eigen::setNbThreads(cores); int p = X.cols(); double tmp;
+  if(centralizeZ){
+    for(int i=0; i<p; i++){
+      tmp = (X.col(i).array()).mean();
+      X.col(i) = X.col(i).array()-tmp;}}
+  Eigen::MatrixXd XXp = X*X.transpose();
+  tmp = 1/(XXp.diagonal().mean());
+  XXp *= tmp; return XXp;}
