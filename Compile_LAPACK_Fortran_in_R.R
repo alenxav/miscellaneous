@@ -1,3 +1,5 @@
+
+# Fortran code
 code = '
 subroutine eigvals(n, a, vre, vim, info)
     implicit none
@@ -9,12 +11,17 @@ subroutine eigvals(n, a, vre, vim, info)
     call dgeev("n", "n", n, a, n, vre, vim, 0d0, 1, 0d0, 1, work, lwork, info)
 end subroutine'
 
+# Write file
 write.table(code,'ev.f90',quote = F,row.names = F,col.names = F)
 
-system('R CMD SHLIB -shared C:/Temp/R/bin/x64/Rlapack.dll ev.f90 -o ev.dll')
+# Compile code
+tmp = paste('R CMD SHLIB -shared',gsub('library/base','bin/x64/Rlapack.dll',system.file()),'ev.f90 -o ev.dll')
+system(tmp)
 
+# Load dynamic library
 dyn.load("ev.dll")
 
+# Function to call
 eigvals <- function(a) {
   if (is.matrix(a) && is.double(a) && nrow(a) == ncol(a)) {
     n <- nrow(a)
@@ -23,5 +30,6 @@ eigvals <- function(a) {
   } else stop("Invalid input")
 }
 
+# Test
 A = crossprod(matrix(rnorm(25),5,5))
 eigvals(A)
