@@ -1,0 +1,10 @@
+GramSchmidt = function(X){
+    v = apply(X,2,sd)
+    o = order(v,decreasing = T)
+    X2 = X
+    for(i in 2:length(o)){
+      X1 = cbind(1,X[,which(o<i)])
+      w = which(o==i)
+      b = qr.solve(X1,X[,w])
+      X2[,w] = X[,w]-X1%*%b}
+    return(X2)}
