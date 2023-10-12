@@ -8,7 +8,9 @@ tlm = function(formula,data,Tukey=T,...){
   # fit the model
   fnew = update(formula,~.-1)
   fit = lm(formula=fnew,data=data)
-  
+  stats = summary(fit)$coefficients
+  stats = stats[grepl(key,rownames(stats)),]
+
   Y = predict(fit,data,terms=key,type='term')+fit$residuals
   data_new = fit$model
   data_new[['Y']] = Y
@@ -24,9 +26,13 @@ tlm = function(formula,data,Tukey=T,...){
   tt = try(pairwise.t.test(Y,X,pool.sd=F),silent = T)
   if(class(tt)=="try-error")  tt = pairwise.t.test(Y,X,pool.sd=T)
   
-  # mean and sd
-  mu = tapply(Y,X,mean)
-  std = tapply(Y,X,sd)
+  # mean and sd # Debugged with Rajat, 10/12/2023
+  # mu = tapply(Y,X,mean)
+  # std =  tapply(Y,X,sd)
+  rownames(stats) = gsub(key,'',rownames(stats))
+  mu = stats[,1]
+  std = stats[,2]
+
   
   std[is.na(std)] = mean(std,na.rm = T)
   
