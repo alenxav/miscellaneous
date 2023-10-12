@@ -1,12 +1,5 @@
 
-set.seed(123)
-
-# Simulate dataset with 150 traits and 50% missing
-data(tpod,package='bWGR');Z=gen; rm(y,chr,fam,gen)
-sim = bWGR::SimY(Z = Z, k=100, h2=0.25, GC=0.25)
-Y = sim$Y; Y[sample(length(Y),length(Y)*0.5)] = NA
-
-# creating latent spaces
+# Creating latent spaces
 Autoencoder = function(Y,NumLatSpa=10,maxit=500,minit=20,LogConv=5,rate=0.1,decay=0.95,lmb=0.001,
                  PrintEvery=100,DropOut=0.5,ObsDropOut=FALSE,ADAM=FALSE,verb=TRUE){
   Y = X = apply(Y,2,scale)
@@ -83,24 +76,7 @@ MegaLmm = function(Y,Z,rerun=0,...){
     }
   }
   # Output
-  return(list(FA=FA,A=A,hat=Hat,b=Beta,gebv=Z%*%Beta))
+  mu=colMeans(Y,na.rm=T)
+  return(list(FA=FA,A=A,hat=Hat,mu=mu,b=Beta,gebv=Z%*%Beta))
 }
-
-
-
-# Fit MegaLMM
-fit = MegaLmm(Y,Z,NumLatSpa=2,verb=F)
-mean(diag(cor(fit$gebv,sim$tbv)))
-
-# Fit PEGS
-mvgs = bWGR::MRR3(Y,Z,NoInv = T,InnerGS = T)
-mean(diag(cor(mvgs$hat,sim$tbv)))
-
-# Fit SEM
-sem = bWGR::SEM(Y,Z,PCs=2)
-mean(diag(cor(sem$hat,sim$tbv)))
-
-# Fit MegaLMM with anothe iteration of FA
-fit2 = MegaLmm(Y,Z,NumLatSpa=2,verb=F,rerun=2,rate=0.02)
-mean(diag(cor(fit2$gebv,sim$tbv)))
 
