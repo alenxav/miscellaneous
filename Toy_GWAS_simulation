@@ -17,7 +17,7 @@ k = length(h2)
 Z0 = sim_bipar_pop(ind = 2*N_total)
 Z = Z0[1:N_total,]+ Z0[-c(1:N_total),]
 S = bWGR::SimY(Z,h2=0.1,k = length(h2))
-g = apply(S$tbv,2,scale)*0.1
+g = apply(S$tbv,2,scale) # polygene
 QTL = Z[,qtl_pos]*true_qtl_eff 
 tbv = g+QTL
 ve = apply(tbv,2,var)*(1-h2)/h2
