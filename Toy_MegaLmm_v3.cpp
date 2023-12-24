@@ -4,7 +4,7 @@
 #include <random>
 
 Eigen::VectorXd solver1x(Eigen::VectorXd Y, Eigen::MatrixXd X,
-                         int maxit = 150, double tol = 10e-7, double df0 = 20.0){
+                         int maxit = 100, double tol = 10e-7, double df0 = 20.0){
   int n = X.rows(), p = X.cols(), numit = 0, J;
   double mu = Y.mean(), mu0;
   Eigen::VectorXd y = Y.array()-mu;
@@ -38,7 +38,7 @@ Eigen::VectorXd solver1x(Eigen::VectorXd Y, Eigen::MatrixXd X,
 }
 
 Eigen::VectorXd solver2x(Eigen::VectorXd Y, Eigen::MatrixXd X1, Eigen::MatrixXd X2,
-                         int maxit = 150, double tol = 10e-7, double df0 = 20.0){
+                         int maxit = 100, double tol = 10e-7, double df0 = 20.0){
   int n = X1.rows(), p1 = X1.cols(), p2 = X2.cols(), numit = 0, J;
   double mu = Y.mean(), mu0;
   Eigen::VectorXd y = Y.array()-mu;
@@ -73,8 +73,8 @@ Eigen::VectorXd solver2x(Eigen::VectorXd Y, Eigen::MatrixXd X1, Eigen::MatrixXd 
       e = e - X2.col(J)*(b1-b0); b_2[J] = b1*1.0;}
     mu0=e.array().mean(); mu+=mu0; e=e.array()-mu0;
     ve = (e.transpose()*e+e.transpose()*y); ve=(ve+ve0)/(2*n-1+df0);
-    vb1 = (b_1.transpose()*b_1 + tilde1.transpose()*b_1 + vb01); vb1=vb1/(TrXSX1+p1+df0);
-    vb2 = (b_2.transpose()*b_2 + tilde2.transpose()*b_2 + vb02); vb2=vb2/(TrXSX2+p2+df0);
+    vb1=(b_1.transpose()*b_1 + b_1.transpose()*b_1 + vb01); vb1=vb1/(TrXSX1+q1+df0);
+    vb2=(b_2.transpose()*b_2 + b_2.transpose()*b_2 + vb02); vb2=vb2/(TrXSX2+q2+df0);
     lambda1 = ve/vb1; lambda2 = ve/vb2;
     cnv = log10((beta01.array()-b_1.array()).square().sum()+(beta02.array()-b_2.array()).square().sum());
     ++numit; if( cnv<logtol || numit == maxit || std::isnan(cnv) ) break;  }
@@ -99,11 +99,11 @@ Eigen::MatrixXd UVBETA(Eigen::MatrixXd Y, Eigen::MatrixXd X){
   int n0=Y.rows(), p=X.cols(), k=Y.cols(); Eigen::MatrixXd BETA(p,k); Eigen::MatrixXi W(n0,k);
   for(int i=0;i<n0;i++){for(int j=0;j<k;j++){if(std::isnan(Y(i,j))){W(i,j)=0;}else{W(i,j)=1;}}}
   for(int i=0;i<k;i++){
-  if(W.col(i).array().sum()>0){
-    BETA.col(i) = solver1x(
-      subvec_f( Y.col(i).array(), W.col(i).array()),
-      submat_f( X, W.col(i).array())).array();}else{
-    BETA.col(i) = Eigen::VectorXd::Zero(p);}}
+    if(W.col(i).array().sum()>0){
+      BETA.col(i) = solver1x(
+        subvec_f( Y.col(i).array(), W.col(i).array()),
+        submat_f( X, W.col(i).array())).array();}else{
+          BETA.col(i) = Eigen::VectorXd::Zero(p);}}
   return BETA;}
 
 Eigen::MatrixXd GetImputedY(Eigen::MatrixXd Y, Eigen::MatrixXd X, Eigen::MatrixXd BETA){
@@ -165,10 +165,10 @@ SEXP MEGA(Eigen::MatrixXd Y, Eigen::MatrixXd X){
   return Rcpp::List::create(Rcpp::Named("mu")=mu,
                             Rcpp::Named("b")=end_beta,
                             Rcpp::Named("hat")=hat,
-			    Rcpp::Named("LS")=LS,
-			    Rcpp::Named("LS_BETA")=LS_BETA,
-			    Rcpp::Named("BETA1")=b1,
-			    Rcpp::Named("BETA2")=b2,
+                            Rcpp::Named("LS")=LS,
+                            Rcpp::Named("LS_BETA")=LS_BETA,
+                            Rcpp::Named("BETA1")=b1,
+                            Rcpp::Named("BETA2")=b2,
                             Rcpp::Named("gebv")=gebv);
 }
 
@@ -202,4 +202,3 @@ SEXP GSEM(Eigen::MatrixXd Y, Eigen::MatrixXd X){
                             Rcpp::Named("b")=BETA*svd.matrixV()*b1+b2,
                             Rcpp::Named("hat")=hat);
 }
- 
