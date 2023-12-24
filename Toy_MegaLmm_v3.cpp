@@ -30,7 +30,8 @@ Eigen::VectorXd solver1x(Eigen::VectorXd Y, Eigen::MatrixXd X,
       e = e - X.col(J)*(b1-b0); b[J] = b1*1.0;}
     mu0 = e.array().mean(); mu+=mu0; e=e.array()-mu0;
     ve = (e.transpose()*e+e.transpose()*y); ve=(ve+ve0)/(2*n-1+df0);
-    vb = b.transpose()*b; vb=(vb+vb0)/(TrXSX+df0);  lambda = ve/vb;
+    vb = b.transpose()*b+tilde.transpose()*b;
+    vb = (vb+vb0)/(TrXSX+p+df0);  lambda = ve/vb;
     cnv = log10((beta0.array()-b.array()).square().sum());
     ++numit; if( cnv<logtol || numit == maxit || std::isnan(cnv) ) break;}
   return b;
