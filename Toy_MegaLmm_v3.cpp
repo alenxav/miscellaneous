@@ -73,8 +73,8 @@ Eigen::VectorXd solver2x(Eigen::VectorXd Y, Eigen::MatrixXd X1, Eigen::MatrixXd 
       e = e - X2.col(J)*(b1-b0); b_2[J] = b1*1.0;}
     mu0=e.array().mean(); mu+=mu0; e=e.array()-mu0;
     ve = (e.transpose()*e+e.transpose()*y); ve=(ve+ve0)/(2*n-1+df0);
-    vb1=(b_1.transpose()*b_1+vb01); vb1=vb1/(TrXSX1+df0);
-    vb2=(b_2.transpose()*b_2+vb02); vb2=vb2/(TrXSX2+df0);
+    vb1=(b_1.transpose()*b_1 + b_1.transpose()*b_1 + vb01); vb1=vb1/(TrXSX1+q1+df0);
+    vb2=(b_2.transpose()*b_2 + b_2.transpose()*b_2 + vb02); vb2=vb2/(TrXSX2+q2+df0);
     lambda1 = ve/vb1; lambda2 = ve/vb2;
     cnv = log10((beta01.array()-b_1.array()).square().sum()+(beta02.array()-b_2.array()).square().sum());
     ++numit; if( cnv<logtol || numit == maxit || std::isnan(cnv) ) break;  }
