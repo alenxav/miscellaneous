@@ -29,7 +29,7 @@ Eigen::VectorXd solver1x(Eigen::VectorXd Y, Eigen::MatrixXd X,
       b1 = (e.transpose()*X.col(J)+XX(J)*b0)/(XX[J]+lambda);
       e = e - X.col(J)*(b1-b0); b[J] = b1*1.0;}
     mu0 = e.array().mean(); mu+=mu0; e=e.array()-mu0;
-    ve = (e.transpose()*e); ve=(ve+ve0)/(n+df0);
+    ve = (e.transpose()*e+e.transpose()*y); ve=(ve+ve0)/(2*n-1+df0);
     vb = b.transpose()*b; vb=(vb+vb0)/(TrXSX+df0);  lambda = ve/vb;
     cnv = log10((beta0.array()-b.array()).square().sum());
     ++numit; if( cnv<logtol || numit == maxit || std::isnan(cnv) ) break;}
@@ -71,8 +71,7 @@ Eigen::VectorXd solver2x(Eigen::VectorXd Y, Eigen::MatrixXd X1, Eigen::MatrixXd 
       b1 = (e.transpose()*X2.col(J)+XX2(J)*b0)/(XX2[J]+lambda2);
       e = e - X2.col(J)*(b1-b0); b_2[J] = b1*1.0;}
     mu0=e.array().mean(); mu+=mu0; e=e.array()-mu0;
-    ve = (e.transpose()*e);//y);
-    ve=(ve+ve0)/(n+df0);
+    ve = (e.transpose()*e+e.transpose()*y); ve=(ve+ve0)/(2*n-1+df0);
     vb1=(b_1.transpose()*b_1+vb01); vb1=vb1/(TrXSX1+df0);
     vb2=(b_2.transpose()*b_2+vb02); vb2=vb2/(TrXSX2+df0);
     lambda1 = ve/vb1; lambda2 = ve/vb2;
