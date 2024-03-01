@@ -16,6 +16,7 @@ SEXP emBC2(NumericVector y, NumericMatrix gen, double df = 10, double R2 = 0.5, 
     xx[i] = sum(gen(_,i)*gen(_,i));
     vx[i] = var(gen(_,i));
   }
+  double PriorPi = Pi*1.0;
   double MSx = sum(vx)*Pi*(1-Pi);
   double Sa = R2*(df+2)*vy/MSx;
   double Se = (1-R2)*(df+2)*vy;
@@ -40,21 +41,20 @@ SEXP emBC2(NumericVector y, NumericMatrix gen, double df = 10, double R2 = 0.5, 
       b[j] = b1*d[j];
       e = e - gen(_,j)*(b[j]-b0);
     }
-    eM = mean(e);
-    
-    Pi = 1-mean(d);
+    // update pi
+    Pi = ((1-mean(d))*p + PriorPi*df)/(p+df);
     Pi0 = (1-Pi)/Pi;
     MSx = sum(vx)*Pi*(1-Pi);
     Sa = R2*(df+2)*vy/MSx;
-    
+    // update var
+    eM = mean(e);
     ve = (sum(e*e)+Se)/(n+df);
     va = (sum(b*b)+Sa)/(p+df)/(mean(d)-Pi);
     Lmb = ve/va;
+    // update mu
     eM = mean(e);
     mu = mu+eM;
     e = e-eM;
-    
-    
   }
   h2 = 1-ve/vy;
   NumericVector fit(n);
@@ -62,6 +62,7 @@ SEXP emBC2(NumericVector y, NumericMatrix gen, double df = 10, double R2 = 0.5, 
   return List::create(Named("mu") = mu,
                       Named("b") = b,
                       Named("d") = d,
+                      Named("pi") = Pi,
                       Named("hat") = fit,
                       Named("Vg") = va*MSx,
                       Named("Va") = va,
