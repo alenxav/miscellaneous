@@ -1,0 +1,50 @@
+
+
+N_total = 8000
+h2 = c(0.8,0.5,0.2)
+true_qtl_eff = 3
+qtl_pos = 50
+N = c(50, 100,200,500,1000,2000,4000,8000)
+AddPolygene = TRUE
+
+###############################################
+
+sim_bipar_pop = function(ind = 200, snp = 100, rec = 0.01){
+  Z = matrix(NA,snp,ind); Z[1]=0
+  for(i in 2:length(Z)) Z[i] = ifelse(rbinom(1,1,rec)==0,Z[i-1],abs(Z[i-1]-1))
+  return(t(Z))
+}
+
+k = length(h2)
+Z0 = sim_bipar_pop(ind = 2*N_total)
+Z = Z0[1:N_total,]+ Z0[-c(1:N_total),]
+QTL = Z[,qtl_pos]*true_qtl_eff 
+if(AddPolygene){
+  S = bWGR::SimY(Z,h2=0.1,k = length(h2))
+  g = apply(S$tbv,2,scale)
+  tbv = g+QTL
+}else{
+  tbv = matrix(rep(QTL,k),ncol = k)
+}
+ve = apply(tbv,2,var)*(1-h2)/h2
+Y = tbv+20
+for(i in 1:ncol(Y)) Y[,i]=Y[,i]+rnorm(nrow(Y),0,sqrt(ve[i]))
+
+
+Eff = sapply(N, function(n) sapply(1:k, function(i) mas::gwas(Y[1:n,i],Z[1:n,])$GWAS$Effect[qtl_pos,1] ) )
+colnames(Eff) = paste0('N_',N)
+rownames(Eff) = paste0('h2_',h2)
+
+Qvar = sapply(N, function(n) sapply(1:k, function(i) mas::gwas(Y[1:n,i],Z[1:n,])$GWAS$QTLvar[qtl_pos,1] ) )
+colnames(Qvar) = paste0('N_',N)
+rownames(Qvar) = paste0('h2_',h2)
+
+Qvar2 = sapply(N, function(n) sapply(1:k, function(i) mas::CorrectBeavis(mas::gwas(Y[1:n,i],Z[1:n,]))$GWAS$QTLvar[qtl_pos,1] ) )
+colnames(Qvar2) = paste0('N_',N)
+rownames(Qvar2) = paste0('h2_',h2)
+
+#######################
+
+Eff # effect
+Qvar # QTL var
+Qvar2 # QTL var adjusted
