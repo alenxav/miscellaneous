@@ -13,9 +13,12 @@ MEGA_PCFA = function(Y,Z,npc=2*sqrt(ncol(Y))){
   gebv = Z %*% b
   hat = t(mu0 + sd0 * t(FA + Jh$hat))
   h2 = sapply(1:ncol(Y),function(i) cor(Y[,i],gebv[,i],use='p')^2 )
-  colnames(gebv) = names(h2) = names(mu) = colnames(Y)
+  colnames(gebv) = names(h2) = names(mu0) = colnames(Y)
   colnames(b) = colnames(Y); rownames(b) = colnames(Z)
-  return(list(mu=mu, b=b, gebv=gebv, hat=hat, GC=cor(gebv), h2=h2))}
+  return(list(mu=mu0, b=b, 
+              gebv=gebv, hat=hat, 
+              GC=cor(gebv), h2=h2))}
+
 
 # Simulate some data
 Z = bWGR::SimZ()
