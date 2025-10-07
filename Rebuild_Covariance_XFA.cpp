@@ -22,9 +22,7 @@ Eigen::MatrixXd XFA(const Eigen::MatrixXd& G, int pcs=3) {
 }
 
 /*** R
-G = bWGR::SimGC();
-sigma = rchisq(50,10)
-G = G * tcrossprod(sigma)
-G_new = XFA(G,3);
-plot(G,G_new);
+G = bWGR::SimGC()*tcrossprod(sqrt(rchisq(50,10)));
+plot(G,XFA(G,pcs=3),main='UNS(G) vs XFA(G)');
 */
+
